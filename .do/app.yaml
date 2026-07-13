@@ -1,0 +1,24 @@
+name: teamcoronel
+region: nyc
+
+static_sites:
+- name: web
+  source_dir: /
+  index_document: index.html
+  routes:
+  - path: /
+
+functions:
+- name: coach
+  source_dir: packages/coach
+  routes:
+  - path: /api/coach
+  envs:
+  - key: ANTHROPIC_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+
+- name: sheets
+  source_dir: packages/sheets
+  routes:
+  - path: /api/sheets
