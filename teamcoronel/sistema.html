@@ -680,7 +680,7 @@ body {
         <option value="arf">AR Fondo</option>
         <option value="intv">INT Velocidad</option>
         <option value="intf">INT Fondo</option>
-        <option value="form">Formativo</option>
+        <option value="form">Transición</option>
       </select>
       <select class="fi" style="flex:1;min-width:120px" id="dep-filtro-estado" onchange="buildNomina()">
         <option value="">Todos</option>
@@ -709,7 +709,7 @@ body {
           <select class="fi" id="dep-nivel">
             <option value="ALTO RENDIMIENTO">Alto Rendimiento</option>
             <option value="INTERMEDIO">Intermedio</option>
-            <option value="FORMATIVO">Formativo</option>
+            <option value="FORMATIVO">Transición</option>
           </select>
         </div>
         <div class="fg"><label class="fl">Tipo</label>
@@ -721,7 +721,7 @@ body {
           <select class="fi" id="dep-grupo">
             <option value="arv">AR Velocidad</option><option value="arf">AR Fondo</option>
             <option value="intv">INT Velocidad</option><option value="intf">INT Fondo</option>
-            <option value="form">Formativo</option>
+            <option value="form">Transición</option>
           </select>
         </div>
         <div class="fg"><label class="fl">Fecha Ingreso</label><input type="date" class="fi" id="dep-ingreso"></div>
@@ -828,7 +828,7 @@ body {
       <button class="btn btn-secondary btn-sm" onclick="planHoyShow('arf')" id="phb-arf">🏃 AR Fondo</button>
       <button class="btn btn-secondary btn-sm" onclick="planHoyShow('intv')" id="phb-intv">⚡ INT Vel</button>
       <button class="btn btn-secondary btn-sm" onclick="planHoyShow('intf')" id="phb-intf">🏃 INT Fondo</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('form')" id="phb-form">🌱 Formativo</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('form')" id="phb-form">🌱 Transición</button>
     </div>
     <div id="plan-hoy-fecha" style="font-size:.72rem;color:var(--t3);margin-bottom:.75rem"></div>
     <div id="plan-hoy-content"><div class="empty"><div class="empty-icon">📅</div>Selecciona un grupo</div></div>
@@ -963,6 +963,7 @@ body {
       <div>
         <div class="mo-title" id="mo-dep-title">Editar Deportista</div>
         <div class="mo-sub" id="mo-dep-sub"></div>
+        <div id="mo-dep-tiempos-badges" style="display:flex;gap:.4rem;margin-top:.35rem;flex-wrap:wrap"></div>
       </div>
       <div style="display:flex;gap:.4rem;align-items:center">
         <button class="btn btn-secondary btn-sm" id="btn-ficha-dep" onclick="descargarFicha(parseInt(document.getElementById('modal-dep-id').value))">📄 Ficha PDF</button>
@@ -989,7 +990,7 @@ body {
           <select class="fi" id="modal-dep-grupo">
             <option value="arv">AR Velocidad</option><option value="arf">AR Fondo</option>
             <option value="intv">INT Velocidad</option><option value="intf">INT Fondo</option>
-            <option value="form">Formativo</option>
+            <option value="form">Transición</option>
           </select>
         </div>
         <div class="fg"><label class="fl">Categoría Fed.</label><input class="fi" id="modal-dep-cat" placeholder="ej: PREJUVENIL"></div>
@@ -1409,7 +1410,7 @@ function toast(msg, type) {
 // HELPERS
 function fullName(a){ return a.nm&&a.nm!=='--'?a.nm+' '+a.ap:a.ap; }
 function shortName(a){ return a.nm&&a.nm!=='--'?a.nm.split(' ')[0]+' '+a.ap.split(' ')[0]:a.ap.split(' ')[0]; }
-function grupoLabel(g){ return {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Formativo'}[g]||g; }
+function grupoLabel(g){ return {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'}[g]||g; }
 // Nivel display: form counts as Intermedio
 function nivelDisplay(g){ return (g==='arv'||g==='arf')?'Alto Rendimiento':'Intermedio'; }
 
@@ -1427,14 +1428,14 @@ function buildDash() {
   var total    = ATHLETES.length;
   var lesiones = ATHLETES.filter(function(a){ return a.lesion; }).length;
   var ar       = ATHLETES.filter(function(a){ return a.grupo==='arv'||a.grupo==='arf'; }).length;
-  // Formativo cuenta como Intermedio para estadísticas
+  // Transición cuenta como Intermedio para estadísticas
   var inter    = ATHLETES.filter(function(a){ return a.grupo==='intv'||a.grupo==='intf'||a.grupo==='form'; }).length;
   var statsEl  = document.getElementById('dash-stats');
   if(statsEl) statsEl.innerHTML =
     mkStat('Total',''+total,'Deportistas') +
     mkStat('Lesiones',''+lesiones,'Activas',lesiones>0?'var(--orange)':'var(--green)') +
     mkStat('AR',''+ar,'Alto rendimiento') +
-    mkStat('INT',''+inter,'Intermedio + Formativo');
+    mkStat('INT',''+inter,'Intermedio + Transición');
 
   var lesEl = document.getElementById('dash-lesiones');
   if(lesEl) {
@@ -1496,9 +1497,7 @@ function buildNomina() {
       +'<div class="dep-meta">'+grupoLabel(a.grupo)+' · '+nivelDisplay(a.grupo)+' · '+(a.gen==='F'?'Femenino':'Masculino')+' · '+(a.nac||'—')+'</div>'
       +(a.lesion?'<div style="margin-bottom:.5rem"><span class="badge badge-orange">⚠️ '+a.lesion+'</span></div>':'')
       +'<div class="dep-stats">'
-      +'<div class="dep-stat"><span class="dep-stat-val">'+(a.vel?a.vel+'"':'—')+'</span><span class="dep-stat-lbl">200m Lanz</span></div>'
-      +'<div class="dep-stat"><span class="dep-stat-val">'+a.res+'</span><span class="dep-stat-lbl">Resistencia</span></div>'
-      +'<div class="dep-stat"><span class="dep-stat-val">'+a.tec+'</span><span class="dep-stat-lbl">Técnica</span></div>'
+      +getBestTimesHTML(a.id, a.vel)
       +'</div>'
       +'<div class="dep-actions">'
       +'<button class="btn btn-secondary btn-sm" onclick="abrirEditDep('+a.id+')">✏ Editar</button>'
@@ -1555,6 +1554,7 @@ function abrirEditDep(id) {
   renderHistorialDep(id);
   mostrarTiemposModal(id);
   mostrarAntro(id);
+  mostrarMejoresTiempos(id);
   document.getElementById('mo-dep').classList.add('on');
 }
 
@@ -2041,7 +2041,7 @@ function buildPlanesGuardados() {
   var discs = Object.keys(planesDisciplina);
   if(!discs.length){ el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No hay planes guardados</div>'; return; }
   var html = '';
-  var discLabels = {velocidad:'⚡ Velocidad', fondo:'🏃 Fondo', formativo:'🌱 Formativo'};
+  var discLabels = {velocidad:'⚡ Velocidad', fondo:'🏃 Fondo', formativo:'🌱 Transición'};
   discs.forEach(function(disc){
     var semanas = Object.keys(planesDisciplina[disc]);
     if(!semanas.length) return;
@@ -2481,7 +2481,7 @@ function planHoyShow(grupo) {
 
   var ultima = semanas[semanas.length-1];
   var planDia = (planes[ultima]||{})[diaActual] || (planes[ultima]||{}).lunes;
-  var glabel = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Formativo'}[grupo];
+  var glabel = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'}[grupo];
   var diasLabel = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
 
   if(!planDia){
@@ -2980,7 +2980,7 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '.footer-doc {margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:9px;color:#9ca3af}'
     + '@media print {body {-webkit-print-color-adjust:exact;print-color-adjust:exact}.page {padding:20px}}';
 
-  var grupoMap = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Formativo'};
+  var grupoMap = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'};
   var nivelMap = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',intv:'Intermedio',intf:'Intermedio',form:'Intermedio'};
 
   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
@@ -3025,11 +3025,8 @@ function generarCertificado(id) {
   var esFem    = a.gen === 'F';
   var trato    = esFem ? 'Srta.' : 'Sr.';
   var fedLabel = esFem ? 'deportista federada' : 'deportista federado';
-  var catTexto = a.cat || ({
-    arv:'Juvenil Alta Competencia', arf:'Juvenil Alta Competencia',
-    intv:'Juvenil Intermedio',      intf:'Juvenil Intermedio',
-    form:'Infantil'
-  }[a.grupo] || '');
+  var nivelCert = (a.grupo==='arv'||a.grupo==='arf') ? 'Alta Competencia' : (a.grupo==='form'?'Infantil':'Intermedio');
+  var catTexto = (a.cat||({arv:'Juvenil',arf:'Juvenil',intv:'Juvenil',intf:'Juvenil',form:'Transición'}[a.grupo]||''))+' '+nivelCert;
   var rut = (a.rut||'').replace(/(\d)(?=(\d{3})+(?!\d))/g,'$1.');
 
   var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -3069,7 +3066,7 @@ function generarCertificado(id) {
     + 'Rut <span class="nombre">'+rut+'</span> es '+fedLabel
     + ' de la disciplina Patín Carrera Categoría '+catTexto
     + ' y representa a nuestro club, comuna y región en las competencias'
-    + ' Ranking y Preselectivos que se realizan actualmente en el Patinódromo del Estadio Nacional CAR.</p>'
+    + ' que se realizan actualmente en el Patinódromo del Estadio Nacional CAR.</p>'
     + '<p>Sus Horario de entrenamientos son:</p>'
     + '<div class="horarios"><table>'
     + '<tr><td style="width:110px;padding:2px 0">Lunes</td><td>16:30 hrs.</td></tr>'
@@ -3258,6 +3255,12 @@ function getStats() {
 }
 
 document.addEventListener('DOMContentLoaded',function(){
+  // Auth check - only coaches can access sistema.html
+  if(sessionStorage.getItem('tc_auth') !== 'coach') {
+    window.location.href = 'index.html';
+    return;
+  }
+
   // Track page visits
   var visits = parseInt(localStorage.getItem('tc_visits')||'0') + 1;
   localStorage.setItem('tc_visits', visits);
@@ -3334,7 +3337,7 @@ function descargarFicha(id) {
       return '<div class="obs-entry"><div class="obs-date">'+h.fecha+'</div>'
         +'<div class="obs-text">'+n.replace(/\n/g,'<br>')+'</div></div>';
     }).filter(Boolean).join('');
-    if(oR) oHTML = '<div class="section"><div class="section-title">Diagnostico del Coach</div>'+oR+'</div>';
+    // Diagnostico del Coach no se incluye en ficha PDF
   }
 
   var html = _buildFichaHTML(a, tHTML, aHTML, oHTML, fd);
@@ -3343,6 +3346,81 @@ function descargarFicha(id) {
   var win  = window.open(url,'_blank');
   if(win) win.addEventListener('load', function(){ setTimeout(function(){ win.print(); }, 500); });
   toast('Ficha generada. Usa Imprimir > Guardar como PDF');
+}
+
+
+function antroInit() {
+  var sel = document.getElementById('antro-dep-sel');
+  if(!sel || sel.options.length > 1) return;
+  ATHLETES.forEach(function(a) {
+    var opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = a.ap + ' ' + a.nm;
+    sel.appendChild(opt);
+  });
+}
+
+function antroSelDep(val) {
+  _antroDepId = parseInt(val) || null;
+  var card = document.getElementById('antro-upload-card');
+  if(card) card.style.display = val ? 'block' : 'none';
+  document.getElementById('antro-resultado').style.display = 'none';
+  antroMostrarHistorial();
+}
+
+
+function mostrarMejoresTiempos(id) {
+  var el = document.getElementById('mo-dep-tiempos-badges');
+  if(!el) return;
+
+  var ex   = athletesExtra[id] || athletesExtra[String(id)] || {};
+  var hist = (ex.historial||[]).filter(function(h){ return h.tipo==='tiempo'; });
+
+  function getTiempo(h) {
+    if(h.tiempo && !isNaN(parseFloat(h.tiempo))) return parseFloat(h.tiempo);
+    var m = (h.nota||'').match(/([0-9]+[.,][0-9]+)"/);
+    return m ? parseFloat(m[1].replace(',','.')) : null;
+  }
+
+  var lanzados = hist.filter(function(h){ return !h.tipoControl||h.tipoControl==='lanzado'; })
+    .map(getTiempo).filter(function(t){ return t!==null; });
+  var parados  = hist.filter(function(h){ return h.tipoControl==='parado'; })
+    .map(getTiempo).filter(function(t){ return t!==null; });
+
+  var html = '';
+  if(lanzados.length) {
+    var mejor = Math.min.apply(null, lanzados);
+    html += '<span style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);'
+      +'border-radius:20px;padding:3px 10px;font-size:.68rem;font-weight:600;color:var(--blue-lt)">'
+      +'&#9660; 200mt Lanzado: '+mejor.toFixed(2)+'"</span>';
+  }
+  if(parados.length) {
+    var mejorP = Math.min.apply(null, parados);
+    html += '<span style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);'
+      +'border-radius:20px;padding:3px 10px;font-size:.68rem;font-weight:600;color:var(--orange)">'
+      +'&#9660; 200mt Detenido: '+mejorP.toFixed(2)+'"</span>';
+  }
+  if(!html) {
+    html = '<span style="font-size:.65rem;color:var(--t4)">Sin tiempos registrados</span>';
+  }
+  el.innerHTML = html;
+}
+
+
+function getBestTimesHTML(id, vel) {
+  var ex   = athletesExtra[id] || athletesExtra[String(id)] || {};
+  var hist = (ex.historial||[]).filter(function(h){ return h.tipo==='tiempo'; });
+  function gT(h) {
+    if(h.tiempo && !isNaN(parseFloat(h.tiempo))) return parseFloat(h.tiempo);
+    var m = (h.nota||'').match(/([0-9]+[.,][0-9]+)"/);
+    return m ? parseFloat(m[1].replace(',','.')) : null;
+  }
+  var lz = hist.filter(function(h){ return !h.tipoControl||h.tipoControl==='lanzado'; }).map(gT).filter(function(t){ return t!==null; });
+  var dt = hist.filter(function(h){ return h.tipoControl==='parado'; }).map(gT).filter(function(t){ return t!==null; });
+  var bLz = lz.length ? Math.min.apply(null,lz) : null;
+  var bDt = dt.length ? Math.min.apply(null,dt) : null;
+  return '<div class="dep-stat"><span class="dep-stat-val">'+(bLz?bLz.toFixed(2)+'"':vel?vel+'"':'—')+'</span><span class="dep-stat-lbl">200m Lanzado</span></div>'
+    +'<div class="dep-stat"><span class="dep-stat-val">'+(bDt?bDt.toFixed(2)+'"':'—')+'</span><span class="dep-stat-lbl">200m Detenido</span></div>';
 }
 
 </script>
