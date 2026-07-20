@@ -132,7 +132,7 @@ function getTiempo(h) {
 
 async function cargarDatos() {
   try {
-    var resp = await fetch('/api/sheets?sheet=datos');
+    var resp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=datos');
     var rows = await resp.json();
     var athlete = null, historial = [], mediciones = [], laboratorio = [], planes = null;
 

@@ -125,7 +125,7 @@ async function loginDep() {
   document.getElementById("sp-dep").style.display="block";
   document.getElementById("btn-dep").disabled=true;
   try {
-    var r = await fetch("/api/sheets?sheet=usuarios");
+    var r = await fetch("https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=usuarios");
     var rows = await r.json();
     var found=false,depId=null,depNombre=null;
     console.log("[LOGIN] Rows in usuarios:", rows ? rows.length : 0);
@@ -205,7 +205,7 @@ async function registrar() {
       document.getElementById("btn-reg").disabled=false;
       return;
     }
-    var r2 = await fetch("/api/sheets?sheet=usuarios");
+    var r2 = await fetch("https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=usuarios");
     var rows2 = await r2.json();
     if(Array.isArray(rows2)) {
       for(var j=0;j<rows2.length;j++) {
@@ -218,7 +218,7 @@ async function registrar() {
         }
       }
     }
-    await fetch("/api/sheets",{
+    await fetch("https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({action:"append",sheet:"usuarios",

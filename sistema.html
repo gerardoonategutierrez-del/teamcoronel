@@ -3131,7 +3131,7 @@ async function syncToSheets() {
     ]);
 
     console.log('[SYNC] Sending '+rows.length+' rows to Sheets...');
-    var postResp = await fetch('/api/sheets', {
+    var postResp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({action:'clear_and_write', sheet:'datos', rows:rows})
@@ -3161,7 +3161,7 @@ async function syncFromSheets() {
   console.log('[SYNC] Starting syncFromSheets...');
 
   try {
-    var resp = await fetch('/api/sheets?sheet=datos');
+    var resp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=datos');
     console.log('[SYNC] Response status:', resp.status);
     var text = await resp.text();
     console.log('[SYNC] Raw response:', text.substring(0,200));
