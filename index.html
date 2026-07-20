@@ -218,12 +218,8 @@ async function registrar() {
         }
       }
     }
-    await fetch("https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({action:"append",sheet:"usuarios",
-        row:[rut,hashPass(pw),athlete.id,athlete.nombre,new Date().toLocaleDateString("es-CL")]})
-    });
+    var appendUrl = "https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?action=append&sheet=usuarios&row=" + encodeURIComponent(JSON.stringify([rut,hashPass(pw),athlete.id,athlete.nombre,new Date().toLocaleDateString("es-CL")]));
+    await fetch(appendUrl);
     alert("Cuenta creada para "+athlete.nombre+". Ya puedes iniciar sesion.");
     showLogin();
     document.getElementById("dep-rut").value=rut;
