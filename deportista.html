@@ -277,15 +277,129 @@ function renderFicha() {
 }
 
 function generarFichaPDF() {
-  toast('Generando Ficha PDF...');
-  // Opens in new tab - reuse logic
-  setTimeout(function(){ toast('Ficha lista para imprimir'); }, 800);
+  if(!_depData) { toast('Cargando datos...'); return; }
+  var a    = _depData.athlete;
+  var hist = _depData.historial;
+  var tiempos = hist.filter(function(h){ return h.tipo==='tiempo'; });
+  var obs     = hist.filter(function(h){ return h.tipo!=='tiempo'&&h.tipo!=='control'; }).slice(0,3);
+
+  var hoy = new Date();
+  var fd  = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+
+  var grupoMap = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transicion'};
+  var nivelMap = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',intv:'Intermedio',intf:'Intermedio',form:'Transicion'};
+
+  function gT(h){if(h.tiempo&&!isNaN(parseFloat(h.tiempo)))return parseFloat(h.tiempo);var m=(h.nota||'').match(/([0-9]+[.,][0-9]+)"/);return m?parseFloat(m[1].replace(',','.')):null;}
+  function pfD(f){var p=(f||'').split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}
+
+  var ts = tiempos.slice().sort(function(a,b){return pfD(b.fecha)-pfD(a.fecha);}).slice(0,5);
+  var tRows = ts.map(function(h){var tv=gT(h),lb=h.tipoControl==='parado'?'200mt Detenido':h.tipoControl==='100m'?'100mt':'200mt Lanzado';return '<tr><td>'+h.fecha+'</td><td>'+lb+'</td><td><b>'+(tv?tv+'"':'—')+'</b></td></tr>';}).join('');
+  var tHTML = ts.length ? '<div style="margin-bottom:18px"><div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:#6b7280;margin-bottom:.5rem">TIEMPOS EN PISTA</div><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#eff6ff"><th style="padding:5px 8px;text-align:left">Fecha</th><th style="padding:5px 8px;text-align:left">Control</th><th style="padding:5px 8px;text-align:left">Tiempo</th></tr></thead><tbody>'+tRows+'</tbody></table></div>' : '';
+
+  var antro = _antro;
+  var aHTML = '';
+  if(antro && antro.mediciones && antro.mediciones.length) {
+    var last = antro.mediciones.slice().sort(function(a,b){return pfD(b.fecha)-pfD(a.fecha);})[0];
+    aHTML = '<div style="margin-bottom:18px"><div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:#6b7280;margin-bottom:.5rem">ULTIMA MEDICION · '+last.fecha+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">'
+      +'<div style="background:#f8fafc;border-radius:6px;padding:.5rem .75rem"><div style="font-size:.6rem;color:#6b7280">PESO</div><div style="font-weight:700">'+last.peso+' kg</div></div>'
+      +'<div style="background:#f8fafc;border-radius:6px;padding:.5rem .75rem"><div style="font-size:.6rem;color:#6b7280">TALLA</div><div style="font-weight:700">'+(last.talla||'—')+' cm</div></div>'
+      +'<div style="background:#f8fafc;border-radius:6px;padding:.5rem .75rem"><div style="font-size:.6rem;color:#6b7280">% GRASA</div><div style="font-weight:700;color:#f59e0b">'+last.pct_grasa+'%</div></div>'
+      +'<div style="background:#f8fafc;border-radius:6px;padding:.5rem .75rem"><div style="font-size:.6rem;color:#6b7280">% MUSCULO</div><div style="font-weight:700;color:#3b82f6">'+last.pct_musculo+'%</div></div>'
+      +'</div></div>';
+  }
+
+  var css = 'body{font-family:Arial,sans-serif;background:#fff;color:#1f2937;font-size:12px;margin:0;padding:32px}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:16px}'
+    +'.logo{width:60px}.club{font-size:18px;font-weight:900;letter-spacing:3px;color:#1d4ed8}'
+    +'.banner{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);border-radius:10px;padding:14px 18px;margin-bottom:16px;color:#fff}'
+    +'.name{font-size:20px;font-weight:900;margin-bottom:4px}.meta{font-size:10px;opacity:.8}'
+    +'table{width:100%;border-collapse:collapse}th,td{padding:5px 8px;border-bottom:1px solid #f3f4f6}'
+    +'@media print{body{padding:20px}}';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'
+    +'<div class="hdr"><div><img class="logo" src="data:image/png;base64,' + logo_b64 + '"><div class="club">TEAM CORONEL</div><div style="font-size:9px;color:#6b7280">Patin Carrera · Coronel · Biobio</div></div>'
+    +'<div style="text-align:right;font-size:10px;color:#6b7280"><b>Ficha del Deportista</b><br>Temporada 2026<br>'+fd+'</div></div>'
+    +'<div class="banner"><div class="name">'+a.ap+' '+a.nm+'</div><div class="meta">Nac: '+a.nac+' | '+(a.gen==='F'?'Femenino':'Masculino')+' | '+(grupoMap[a.grupo]||a.grupo)+' | '+(nivelMap[a.grupo]||'')+'</div></div>'
+    +tHTML+aHTML
+    +'<div style="margin-top:24px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:9px;color:#9ca3af"><span>TEAM CORONEL 2026</span><span>teamcoronel.cl</span></div>'
+    +'</body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var url  = URL.createObjectURL(blob);
+  var win  = window.open(url,'_blank');
+  if(win) win.addEventListener('load',function(){setTimeout(function(){win.print();},500);});
+  toast('Ficha generada. Usa Imprimir > Guardar como PDF');
 }
 
 function generarCertificado() {
-  _certCount++;
-  localStorage.setItem('tc_cert_count', (parseInt(localStorage.getItem('tc_cert_count')||'0')+1));
-  toast('Certificado generado');
+  if(!_depData) { toast('Cargando datos...'); return; }
+  var a = _depData.athlete;
+
+  var certCount = parseInt(localStorage.getItem('tc_cert_count')||'0') + 1;
+  localStorage.setItem('tc_cert_count', certCount);
+  var certNum = String(certCount).padStart(4,'0');
+
+  var esFem    = a.gen === 'F';
+  var trato    = esFem ? 'Srta.' : 'Sr.';
+  var fedLabel = esFem ? 'deportista federada' : 'deportista federado';
+  var nivelCert = (a.grupo==='arv'||a.grupo==='arf') ? 'Alta Competencia' : (a.grupo==='form'?'Transicion':'Intermedio');
+  var catTexto  = (a.cat||({arv:'Juvenil',arf:'Juvenil',intv:'Juvenil',intf:'Juvenil',form:'Infantil'}[a.grupo]||''))+' '+nivelCert;
+  var rut = (a.rut||'').replace(/(\d)(?=(\d{3})+(?!\d))/g,'$1.');
+
+  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var hoy=new Date();
+  var fechaTxt=hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
+
+  var css='*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:13.5px;line-height:1.65}'
+    +'.page{max-width:720px;margin:0 auto;padding:40px 60px 100px}'
+    +'.titulo{text-align:center;font-size:20px;font-weight:700;letter-spacing:3px;margin-bottom:40px;text-decoration:underline}'
+    +'.cuerpo{text-align:justify;margin-bottom:18px}'
+    +'.nombre{font-weight:700}'
+    +'.horarios td{padding:2px 8px 2px 0}'
+    +'.cierre{text-align:justify;margin:22px 0 40px}'
+    +'.firma-bloque{display:flex;flex-direction:column;align-items:center;margin:0 auto;width:280px}'
+    +'.firma-linea{border-top:1px solid #000;width:240px;margin-bottom:6px}'
+    +'.footer{position:fixed;bottom:20px;left:60px;right:60px;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:10px;font-size:11px;color:#444}'
+    +'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+
+  var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:35px">'
+    +'<img style="width:90px" src="data:image/png;base64,' + logo_b64 + '" alt="TC">'
+    +'<div style="font-size:13px;padding-top:10px">'+fechaTxt+'</div></div>'
+    +'<div class="titulo">CERTIFICADO Nº '+certNum+'</div>'
+    +'<p class="cuerpo">El TEAM CORONEL PJ 360046, certifica que <span class="nombre">'+trato+' '+a.nm+' '+a.ap+'</span> '
+    +'Rut <span class="nombre">'+rut+'</span> es '+fedLabel+' de la disciplina Patín Carrera Categoría '+catTexto
+    +' y representa a nuestro club, comuna y región en las competencias'
+    +' que se realizan actualmente en el Patinódromo del Estadio Nacional CAR.</p>'
+    +'<p>Sus Horario de entrenamientos son:</p>'
+    +'<div style="margin:16px 0 18px 20px"><table class="horarios">'
+    +'<tr><td style="width:110px">Lunes</td><td>16:30 hrs.</td></tr>'
+    +'<tr><td>Martes</td><td>15:45 hrs.</td></tr>'
+    +'<tr><td>Miércoles</td><td>17:30 hrs.</td></tr>'
+    +'<tr><td>Jueves</td><td>15:45 hrs.</td></tr>'
+    +'<tr><td>Viernes</td><td>17:30 hrs.</td></tr>'
+    +'<tr><td>Sábado</td><td>07:00 hrs.</td></tr>'
+    +'</table></div>'
+    +'<p class="cuerpo">Para cada competencia debe viajar los días jueves para su proceso de adaptación en la pista donde correrá.</p>'
+    +'<p class="cierre">Se extiende el presente certificado a solicitud del interesado para ser presentado donde estime pertinente.</p>'
+    +'<div class="firma-bloque">'
+    +'<img style="width:260px;height:130px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + firma_b64 + '" alt="Firma">'
+    +'<div class="firma-linea"></div>'
+    +'<div style="font-weight:700;font-size:13px;text-align:center">Gerardo Oñate G.</div>'
+    +'<div style="font-size:13px;text-align:center">Presidente</div>'
+    +'<div style="font-size:13px;text-align:center">TEAM CORONEL</div>'
+    +'</div>'
+    +'<div style="margin-top:35px;font-size:12px">Cc: Archivo</div>'
+    +'<div class="footer"><span>team coronel</span><span>patincarreracoronel@gmail.com</span><span>teamcoronel_patin</span></div>'
+    +'</div></body></html>';
+
+  var blob=new Blob([html],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  var win=window.open(url,'_blank');
+  if(win) win.addEventListener('load',function(){setTimeout(function(){win.print();},600);});
+  toast('Certificado Nº '+certNum+' generado');
 }
 
 function logout() {
