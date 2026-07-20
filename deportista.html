@@ -320,7 +320,7 @@ function generarFichaPDF() {
     +'@media print{body{padding:20px}}';
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+'</style></head><body>'
-    +'<div class="hdr"><div><img class="logo" src="data:image/png;base64,' + logo_b64 + '"><div class="club">TEAM CORONEL</div><div style="font-size:9px;color:#6b7280">Patin Carrera · Coronel · Biobio</div></div>'
+    +'<div class="hdr"><div><img class="logo" src="data:image/png;base64,' + _LOGO_B64 + '"><div class="club">TEAM CORONEL</div><div style="font-size:9px;color:#6b7280">Patin Carrera · Coronel · Biobio</div></div>'
     +'<div style="text-align:right;font-size:10px;color:#6b7280"><b>Ficha del Deportista</b><br>Temporada 2026<br>'+fd+'</div></div>'
     +'<div class="banner"><div class="name">'+a.ap+' '+a.nm+'</div><div class="meta">Nac: '+a.nac+' | '+(a.gen==='F'?'Femenino':'Masculino')+' | '+(grupoMap[a.grupo]||a.grupo)+' | '+(nivelMap[a.grupo]||'')+'</div></div>'
     +tHTML+aHTML
@@ -368,7 +368,7 @@ function generarCertificado() {
 
   var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div class="page">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:35px">'
-    +'<img style="width:90px" src="data:image/png;base64,' + logo_b64 + '" alt="TC">'
+    +'<img style="width:90px" src="data:image/png;base64,' + _LOGO_B64 + '" alt="TC">'
     +'<div style="font-size:13px;padding-top:10px">'+fechaTxt+'</div></div>'
     +'<div class="titulo">CERTIFICADO Nº '+certNum+'</div>'
     +'<p class="cuerpo">El TEAM CORONEL PJ 360046, certifica que <span class="nombre">'+trato+' '+a.nm+' '+a.ap+'</span> '
@@ -387,7 +387,7 @@ function generarCertificado() {
     +'<p class="cuerpo">Para cada competencia debe viajar los días jueves para su proceso de adaptación en la pista donde correrá.</p>'
     +'<p class="cierre">Se extiende el presente certificado a solicitud del interesado para ser presentado donde estime pertinente.</p>'
     +'<div class="firma-bloque">'
-    +'<img style="width:260px;height:130px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + firma_b64 + '" alt="Firma">'
+    +'<img style="width:260px;height:130px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + _FIRMA_B64 + '" alt="Firma">'
     +'<div class="firma-linea"></div>'
     +'<div style="font-weight:700;font-size:13px;text-align:center">Gerardo Oñate G.</div>'
     +'<div style="font-size:13px;text-align:center">Presidente</div>'
