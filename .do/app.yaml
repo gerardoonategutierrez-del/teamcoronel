@@ -1,0 +1,29 @@
+name: teamcoronel
+region: sfo
+static_sites:
+- name: web
+  source_dir: /
+  github:
+    repo: gerardoonategutierrez-del/teamcoronel
+    branch: main
+    deploy_on_push: true
+  index_document: index.html
+  routes:
+  - path: /
+functions:
+- name: coach
+  source_dir: packages/coach
+  github:
+    repo: gerardoonategutierrez-del/teamcoronel
+    branch: main
+    deploy_on_push: true
+  routes:
+  - path: /api/coach
+- name: sheets
+  source_dir: packages/sheets
+  github:
+    repo: gerardoonategutierrez-del/teamcoronel
+    branch: main
+    deploy_on_push: true
+  routes:
+  - path: /api/sheets
