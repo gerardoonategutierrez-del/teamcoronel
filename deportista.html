@@ -259,17 +259,12 @@ function renderFicha() {
   if(obs.length) {
     obsHTML = '<div class="section"><div class="sec-title">DIAGNOSTICO DEL COACH</div>'
       +obs.map(function(h){
-        var nota = (h.nota||'').replace(/^[^
-]+
-/,'').split('
-
-')[0].trim().split('
-').slice(0,4).join('
-');
-        if(!nota) return '';
+        var nl=(h.nota||'').indexOf('\n');
+        var nota=nl>-1?(h.nota||'').substring(nl+1):(h.nota||'');
+        nota=nota.split('\n\n')[0].trim().split('\n').slice(0,4).join('\n');
+        if(!nota.trim()) return '';
         return '<div class="obs-entry"><div class="obs-date">'+h.fecha+'</div>'
-          +'<div class="obs-text">'+nota.replace(/
-/g,'<br>')+'</div></div>';
+          +'<div class="obs-text">'+nota.replace(/\n/g,'<br>')+'</div></div>';
       }).filter(Boolean).join('')
       +'</div>';
   }
