@@ -128,8 +128,11 @@ async function loginDep() {
     var r = await fetch("/api/sheets?sheet=usuarios");
     var rows = await r.json();
     var found=false,depId=null,depNombre=null;
+    console.log("[LOGIN] Rows in usuarios:", rows ? rows.length : 0);
+    console.log("[LOGIN] RUT buscado:", rut, "Hash:", hashPass(pw));
     if(Array.isArray(rows)) {
       for(var i=0;i<rows.length;i++) {
+        console.log("[LOGIN] Row "+i+":", rows[i][0], rows[i][1]);
         if(rows[i][0]&&rows[i][0].toString().toLowerCase()===rut&&rows[i][1]===hashPass(pw)) {
           found=true; depId=rows[i][2]; depNombre=rows[i][3]; break;
         }
