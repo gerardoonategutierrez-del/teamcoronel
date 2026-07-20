@@ -153,6 +153,34 @@ async function loginDep() {
   document.getElementById("btn-dep").disabled=false;
 }
 
+var ATHLETES_RUT = {
+  "24221026-3": {id:1, nombre:"ACUÑA CUEVAS Amanda Isidora"},
+  "23106758-2": {id:2, nombre:"CANALES CIFUENTES Pedro Antonio"},
+  "23258334-7": {id:3, nombre:"ESPINOZA REYES Martina"},
+  "22858976-4": {id:4, nombre:"FLORES PEREZ Yennyfer Haymara"},
+  "22398327-8": {id:5, nombre:"GONZALEZ AZOCAR Vicente Isaiaz"},
+  "23584880-5": {id:6, nombre:"HERREROS PEREIRA Isidora Ignacia"},
+  "24123500-9": {id:7, nombre:"LAGOS ROZAS Ivanna Trinidad"},
+  "25709169-4": {id:8, nombre:"MONCADA AOPORTUS Antonia Elizabeth"},
+  "23772219-1": {id:9, nombre:"MUNDACA TORRES Marianella Monserrat"},
+  "22980782-k": {id:10, nombre:"PONCE ARROYO Antonia Rayen"},
+  "25263461-4": {id:11, nombre:"PRADENAS SILVA Keriam Isidora Paz"},
+  "23238103-5": {id:12, nombre:"RUAI ESPINOZA Renata Lucia"},
+  "24775111-4": {id:13, nombre:"RUIZ CONTRERAS Gustavo Alfredo"},
+  "23121932-3": {id:14, nombre:"SALAS LAZO Catalina Francisca"},
+  "24004595-8": {id:15, nombre:"SANDOVAL CASTANIA Victoria"},
+  "27115797-5": {id:16, nombre:"URRUTIA CANALES Dominga Isidora"},
+  "24815738-0": {id:17, nombre:"VALENZUELA ZAGAL Ainoha Isabella"},
+  "24035034-3": {id:18, nombre:"VEGA COLIHUINCA Belen Emilia"},
+  "25184517-4": {id:19, nombre:"ILLANES MUÑOZ Amanda Ayelen"},
+  "24167736-2": {id:20, nombre:"GAETE MUÑOZ Alonso Joaquin"},
+  "24854421-k": {id:21, nombre:"MEDINA CASTELLON Miranda Victoria"},
+  "25307989-4": {id:22, nombre:"NOA MACHUCA Maite"},
+  "23950024-2": {id:23, nombre:"CATRILELBUN CISTERNA Isabella Antonia"},
+  "26309783-1": {id:24, nombre:"JARA ARCOS Maria Paz"},
+  "25973276-k": {id:25, nombre:"OÑATE VERGARA Priscila Ignacia"},
+};
+
 async function registrar() {
   var rut  = document.getElementById("reg-rut").value.trim().toLowerCase();
   var pw   = document.getElementById("reg-pw").value;
@@ -165,16 +193,8 @@ async function registrar() {
   document.getElementById("sp-reg").style.display="block";
   document.getElementById("btn-reg").disabled=true;
   try {
-    var r1 = await fetch("/api/sheets?sheet=datos");
-    var rows1 = await r1.json();
-    var athlete=null;
-    if(Array.isArray(rows1)) {
-      for(var i=0;i<rows1.length;i++) {
-        if(rows1[i][0]==="ATHLETE"&&rows1[i][5]&&rows1[i][5].toString().toLowerCase()===rut) {
-          athlete={id:rows1[i][1],nombre:rows1[i][2]+" "+rows1[i][3]}; break;
-        }
-      }
-    }
+    // Verify RUT against local athlete list
+    var athlete = ATHLETES_RUT[rut] || null;
     if(!athlete) {
       el.textContent="RUT no encontrado. Consulta con el coach.";
       el.style.display="block";
