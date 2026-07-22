@@ -295,13 +295,15 @@ function enviarPostulacion(){
 async function loadContent(){
   try{
     // Load all sections in parallel
+    var opts={redirect:"follow"};
     var [rN,rG,rD,rT,rSP] = await Promise.all([
-      fetch(SH+"?sheet=landing_noticias").then(function(r){return r.json();}),
-      fetch(SH+"?sheet=landing_galeria").then(function(r){return r.json();}),
-      fetch(SH+"?sheet=landing_deportistas").then(function(r){return r.json();}),
-      fetch(SH+"?sheet=landing_tecnico").then(function(r){return r.json();}),
-      fetch(SH+"?sheet=landing_sponsors").then(function(r){return r.json();})
+      fetch(SH+"?sheet=landing_noticias",opts).then(function(r){return r.json();}).catch(function(){return [];}),
+      fetch(SH+"?sheet=landing_galeria",opts).then(function(r){return r.json();}).catch(function(){return [];}),
+      fetch(SH+"?sheet=landing_deportistas",opts).then(function(r){return r.json();}).catch(function(){return [];}),
+      fetch(SH+"?sheet=landing_tecnico",opts).then(function(r){return r.json();}).catch(function(){return [];}),
+      fetch(SH+"?sheet=landing_sponsors",opts).then(function(r){return r.json();}).catch(function(){return [];})
     ]);
+    console.log("[LANDING] Deportistas:",rD?rD.length:0,"Staff:",rT?rT.length:0,"Sponsors:",rSP?rSP.length:0);
 
     // NOTICIAS
     if(Array.isArray(rN)&&rN.length){
