@@ -253,13 +253,49 @@ function openEdit(sheet,idx,labels,vals,reload){
     else html+='<input type="text" id="ef'+i+'" value="'+val+'">';
     html+='</div>';
   });
+  // Add photo upload for FOTO/LOGO fields
+  var extraHtml = "";
+  labels.forEach(function(lbl,i){
+    if(lbl==="FOTO"||lbl==="LOGO"){
+      var cur=row[i]||"";
+      extraHtml+='<div style="margin-top:-.5rem;margin-bottom:.75rem">';
+      if(cur){extraHtml+='<img src="'+cur+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;margin-bottom:.4rem;display:block">';}
+      extraHtml+='<label style="display:block;font-size:.7rem;color:#9ca3af;font-weight:600;margin-bottom:.3rem">SUBIR NUEVA FOTO</label>';
+      extraHtml+='<div class="ua" style="min-height:50px"><input type="file" accept="image/*" onchange="upEdit(this,'+i+')">';
+      extraHtml+='<div class="ual"><b>Seleccionar</b></div>';
+      extraHtml+='<div class="uping" id="upEdit'+i+'">Subiendo...</div>';
+      extraHtml+='</div></div>';
+      // Replace the input for FOTO with readonly display
+      html=html.replace('<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'">'
+        ,'<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'" placeholder="URL de la foto" style="font-size:.7rem">'+extraHtml);
+    }
+  });
   document.getElementById("ef").innerHTML=html;
   document.getElementById("em").classList.add("op");
 }
+
+async function upEdit(input,fieldIdx){
+  var file=input.files[0];if(!file)return;
+  var up=document.getElementById("upEdit"+fieldIdx);if(up)up.style.display="block";
+  var fd=new FormData();fd.append("file",file);fd.append("upload_preset",PRESET);
+  try{
+    var r=await fetch("https://api.cloudinary.com/v1_1/"+CLOUD+"/image/upload",{method:"POST",body:fd});
+    var d=await r.json();
+    if(d.secure_url){
+      document.getElementById("ef"+fieldIdx).value=d.secure_url;
+      toast("\u2713 Foto subida");
+    }else toast("Error al subir",false);
+  }catch(e){toast("Error de conexi\u00f3n",false);}
+  if(up)up.style.display="none";
+}
 function closeEdit(){document.getElementById("em").classList.remove("op");}
 async function saveEdit(){
-  var row=_el.map(function(l,i){var e=document.getElementById("ef"+i);return e?e.value.trim():"";});
-  await updRow(_es,_ei,row);closeEdit();toast("\u2713 Actualizado en la landing");setTimeout(_ef,900);
+  var labels=document.getElementById("ef").querySelectorAll("[id^=ef]");
+  var row=Array.from(labels).map(function(e){return e.value.trim();});
+  await updRow(_es,_ei,row);
+  closeEdit();
+  toast("\u2713 Actualizado");
+  setTimeout(_ef,900);
 }
 
 function mkCard(row,i,sheet,labels,reload,imgStyle){
