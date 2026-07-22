@@ -266,8 +266,10 @@ function openEdit(sheet,idx,labels,vals,reload){
       extraHtml+='<div class="uping" id="upEdit'+i+'">Subiendo...</div>';
       extraHtml+='</div></div>';
       // Replace the input for FOTO with readonly display
-      html=html.replace('<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'">'
-        ,'<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'" placeholder="URL de la foto" style="font-size:.7rem">'+extraHtml);
+      // Replace the text input with url input + upload
+      var oldInput='<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'">';
+      var newInput='<input type="text" id="ef'+i+'" value="'+cur.replace(/"/g,"&quot;")+'" placeholder="URL de la foto">'+extraHtml;
+      html=html.replace(oldInput, newInput);
     }
   });
   document.getElementById("ef").innerHTML=html;
@@ -290,12 +292,13 @@ async function upEdit(input,fieldIdx){
 }
 function closeEdit(){document.getElementById("em").classList.remove("op");}
 async function saveEdit(){
-  var labels=document.getElementById("ef").querySelectorAll("[id^=ef]");
-  var row=Array.from(labels).map(function(e){return e.value.trim();});
+  var inputs=document.getElementById("ef").querySelectorAll("input[id^=ef],textarea[id^=ef]");
+  var row=Array.from(inputs).map(function(e){return e.value.trim();});
+  toast("Guardando...");
   await updRow(_es,_ei,row);
   closeEdit();
-  toast("\u2713 Actualizado");
-  setTimeout(_ef,900);
+  toast("\u2713 Actualizado en la landing");
+  if(_ef) setTimeout(_ef,900);
 }
 
 function mkCard(row,i,sheet,labels,reload,imgStyle){
@@ -408,7 +411,7 @@ var _LABELS={
 function edit(store,idx,sheet,reload){
   var row=_STORE[store][idx]||[];
   var labels=_LABELS[store];
-  _es=sheet;_ei=idx+1;_ef=reload;
+  _es=sheet;_ei=idx;_ef=reload;
   document.getElementById("et").textContent="Editar";
   var html="";
   labels.forEach(function(lbl,i){
