@@ -58,7 +58,13 @@ section{padding:5rem 1.5rem}
 .noticias-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.25rem}
 .noticia-card{background:#0f1e3a;border:1px solid rgba(37,99,235,.12);border-radius:14px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s;cursor:pointer}
 .noticia-card:hover{transform:translateY(-5px);border-color:rgba(14,165,233,.35);box-shadow:0 8px 30px rgba(14,165,233,.1)}
-.noticia-img{width:100%;height:220px;object-fit:cover;object-position:center top}
+.noticia-img{width:100%;height:220px;object-fit:cover;object-position:center top;cursor:zoom-in;transition:opacity .2s}
+.noticia-img:hover{opacity:.9}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:95vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.8)}
+.lightbox-close{position:fixed;top:1rem;right:1.25rem;color:#fff;font-size:2rem;cursor:pointer;line-height:1;opacity:.8}
+.lightbox-close:hover{opacity:1}
 .noticia-body{padding:1.25rem}
 .noticia-fecha{font-size:.62rem;color:#0ea5e9;font-weight:700;letter-spacing:1.5px;margin-bottom:.4rem;text-transform:uppercase}
 .noticia-titulo{font-size:.95rem;font-weight:700;margin-bottom:.5rem;line-height:1.4}
@@ -312,7 +318,7 @@ async function loadContent(){
         var g=document.getElementById("noticias-grid");
         g.innerHTML=data.map(function(row){
           return '<div class="noticia-card">'+
-            (row[3]?'<img class="noticia-img" src="'+row[3]+'" alt="">':'')+
+            (row[3]?'<img class="noticia-img" src="'+row[3]+'" alt="" onclick="openLightbox(this.src)">':'')+
             '<div class="noticia-body">'+
             '<div class="noticia-fecha">'+row[1]+'</div>'+
             '<div class="noticia-titulo">'+row[0]+'</div>'+
@@ -391,7 +397,21 @@ async function loadContent(){
 
   }catch(e){console.warn("Error loading content:",e);}
 }
+function openLightbox(src){
+  document.getElementById("lightbox-img").src=src;
+  document.getElementById("lightbox").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeLightbox(){
+  document.getElementById("lightbox").classList.remove("open");
+  document.body.style.overflow="";
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeLightbox();});
 loadContent();
 </script>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
 </body>
 </html>
