@@ -277,19 +277,21 @@ function mkCard(row,i,sheet,labels,reload,imgStyle){
     +'</div></div></div>';
 }
 
+
+var _STORE={};
+
 async function cN(){
   try{
     var d=await getRows("landing_noticias");
+    _STORE.N=d;
     var el=document.getElementById("lN");
     if(!d.length){el.innerHTML='<div class="ie">Sin noticias a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'">'
-        :'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128240;</div>')
+      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128240;</div>')
         +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[1]+'</div>'
         +'<div class="is" style="color:#6b7280">'+r[2].substring(0,80)+'...</div>'
         +'<div class="ia">'
-        +'<button class="btn bs bo" onclick="openEdit(\'landing_noticias\','+i+',[\'\u0054\u00cd\u0054\u0055\u004c\u004f\',\'FECHA\',\'TEXTO\',\'FOTO\'],'
-        +JSON.stringify(r.slice(0,4))+',cN)">Editar</button>'
+        +'<button class="btn bs bo" onclick="edit(\'N\','+i+',\'landing_noticias\',cN)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_noticias\','+i+',cN)">Eliminar</button>'
         +'</div></div></div>';
     }).join("");
@@ -311,17 +313,15 @@ async function cG(){
 async function cD(){
   try{
     var d=await getRows("landing_deportistas");
+    _STORE.D=d;
     var el=document.getElementById("lD");
     if(!d.length){el.innerHTML='<div class="ie">Sin deportistas a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">'
-        :'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
+      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
         +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[2]+' &middot; '+r[1]+'</div>'
-        +(r[4]?'<div class="is">&#127942; '+r[4]+'</div>':'')
-        +'<div class="ia">'
-        +'<button class="btn bs bo" onclick="openEdit(\'landing_deportistas\','+i
-        +',[\'\u004e\u004f\u004d\u0042\u0052\u0045\',\'EDAD\',\'CATEGOR\u00cdA\',\'FOTO\',\'LOGRO\'],'
-        +JSON.stringify(r.slice(0,5))+',cD)">Editar</button>'
+        +(r[4]?'<div class="is">&#127942; '+r[4]+'</div>':'')+
+        '<div class="ia">'
+        +'<button class="btn bs bo" onclick="edit(\'D\','+i+',\'landing_deportistas\',cD)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_deportistas\','+i+',cD)">Eliminar</button>'
         +'</div></div></div>';
     }).join("");
@@ -331,16 +331,14 @@ async function cD(){
 async function cT(){
   try{
     var d=await getRows("landing_tecnico");
+    _STORE.T=d;
     var el=document.getElementById("lT");
     if(!d.length){el.innerHTML='<div class="ie">Sin miembros a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">'
-        :'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128101;</div>')
+      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128101;</div>')
         +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[1]+'</div>'
         +'<div class="ia">'
-        +'<button class="btn bs bo" onclick="openEdit(\'landing_tecnico\','+i
-        +',[\'\u004e\u004f\u004d\u0042\u0052\u0045\',\'CARGO\',\'DESCRIPCI\u00d3N\',\'FOTO\'],'
-        +JSON.stringify(r.slice(0,4))+',cT)">Editar</button>'
+        +'<button class="btn bs bo" onclick="edit(\'T\','+i+',\'landing_tecnico\',cT)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_tecnico\','+i+',cT)">Eliminar</button>'
         +'</div></div></div>';
     }).join("");
@@ -350,20 +348,43 @@ async function cT(){
 async function cSP(){
   try{
     var d=await getRows("landing_sponsors");
+    _STORE.SP=d;
     var el=document.getElementById("lSP");
     if(!d.length){el.innerHTML='<div class="ie">Sin sponsors a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="background:#fff;object-fit:contain;padding:.25rem">'
-        :'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#11088;</div>')
+      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="background:#fff;object-fit:contain;padding:.25rem">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#11088;</div>')
         +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[1]+'</div>'
         +'<div class="ia">'
-        +'<button class="btn bs bo" onclick="openEdit(\'landing_sponsors\','+i
-        +',[\'\u004e\u004f\u004d\u0042\u0052\u0045\',\'INSTAGRAM\',\'DESCRIPCI\u00d3N\',\'LOGO\'],'
-        +JSON.stringify(r.slice(0,4))+',cSP)">Editar</button>'
+        +'<button class="btn bs bo" onclick="edit(\'SP\','+i+',\'landing_sponsors\',cSP)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_sponsors\','+i+',cSP)">Eliminar</button>'
         +'</div></div></div>';
     }).join("");
   }catch(e){document.getElementById("lSP").innerHTML='<div class="ie">Error al cargar</div>';}
+}
+
+var _LABELS={
+  N:['TÍTULO','FECHA','TEXTO','FOTO'],
+  D:['NOMBRE','EDAD','CATEGORÍA','FOTO','LOGRO'],
+  T:['NOMBRE','CARGO','DESCRIPCIÓN','FOTO'],
+  SP:['NOMBRE','INSTAGRAM','DESCRIPCIÓN','LOGO']
+};
+
+function edit(store,idx,sheet,reload){
+  var row=_STORE[store][idx]||[];
+  var labels=_LABELS[store];
+  _es=sheet;_ei=idx+1;_ef=reload;
+  document.getElementById("et").textContent="Editar";
+  var html="";
+  labels.forEach(function(lbl,i){
+    var val=(row[i]||"");
+    var isTA=lbl==="TEXTO"||lbl.indexOf("DESC")>-1;
+    html+='<div class="efi"><label>'+lbl+'</label>';
+    if(isTA){html+='<textarea id="ef'+i+'">'+val.replace(/</g,"&lt;")+'</textarea>';}
+    else{html+='<input type="text" id="ef'+i+'" value="'+(val+"").replace(/"/g,"&quot;")+'">';} 
+    html+='</div>';
+  });
+  document.getElementById("ef").innerHTML=html;
+  document.getElementById("em").classList.add("op");
 }
 
 function all(){cN();cG();cD();cT();cSP();}
