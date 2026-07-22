@@ -275,8 +275,11 @@ async function inicializarDatos(){
   toast("Cargando contenido inicial...");
   for(var sheet in INIT_DATA){
     var rows=INIT_DATA[sheet];
-    var url=SH+"?action=clear_and_write&sheet="+sheet+"&rows="+encodeURIComponent(JSON.stringify(rows));
-    await fetch(url);
+    // Skip header row (index 0), append each data row
+    for(var i=1;i<rows.length;i++){
+      var url=SH+"?action=append&sheet="+sheet+"&row="+encodeURIComponent(JSON.stringify(rows[i]));
+      await fetch(url);
+    }
   }
   document.getElementById("init-banner").style.display="none";
   toast("\u2713 Contenido inicial cargado");
