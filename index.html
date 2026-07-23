@@ -284,7 +284,7 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
         <a href="mailto:patincarreracoronel@gmail.com">&#9993; patincarreracoronel@gmail.com</a>
       </div>
       <div class="foot-social">
-        <a class="sponsor-ig" href="https://www.instagram.com/teamcoronel_patin" target="_blank">&#128247; @teamcoronel_patin</a>
+        <a class="sponsor-ig" href="https://www.instagram.com/teamcoronel.cl" target="_blank">&#128247; @teamcoronel.cl</a>
       </div>
     </div>
   </div>
@@ -331,29 +331,32 @@ async function enviarPostulacion(){
   var btnTxt=btn?btn.textContent:"";
   if(btn){btn.disabled=true;btn.textContent="Enviando...";}
 
-  // Guarda la postulación en la base de datos (Google Sheets)
+  // Guarda la postulación en la base de datos (Google Sheets).
+  // El propio backend (Apps Script) es el que envía el correo de aviso al club,
+  // por lo que no se abre ni se usa el correo del postulante en el navegador.
   var fecha=new Date().toLocaleString("es-CL",{timeZone:"America/Santiago"});
   var row=[n,e,niv,c,t,em,msg,fecha];
+  var ok=true;
   try{
     await fetch(SH+"?action=append&sheet=landing_postulaciones&row="+encodeURIComponent(JSON.stringify(row)));
   }catch(err){
+    ok=false;
     console.log("[POSTULACION] No se pudo guardar en la base de datos:",err);
   }
 
-  // Arma el correo con toda la información
-  var asunto="Postulación Team Coronel - "+n;
-  var cuerpo="Nombre: "+n+"\n"
-    +"Edad: "+e+" años\n"
-    +"Nivel: "+niv+"\n"
-    +"Categoría: "+c+"\n"
-    +(t?"Teléfono: "+t+"\n":"")
-    +(em?"Email de contacto: "+em+"\n":"")
-    +"\nMensaje:\n"+msg;
-  var mailto="mailto:patincarreracoronel@gmail.com?subject="+encodeURIComponent(asunto)+"&body="+encodeURIComponent(cuerpo);
-  window.location.href=mailto;
-
   if(btn){btn.disabled=false;btn.textContent=btnTxt;}
-  document.getElementById("form-ok").style.display="block";
+  if(ok){
+    document.getElementById("form-ok").style.display="block";
+    document.getElementById("f-nombre").value="";
+    document.getElementById("f-edad").value="";
+    document.getElementById("f-nivel").value="";
+    document.getElementById("f-cat").value="";
+    document.getElementById("f-tel").value="";
+    document.getElementById("f-email").value="";
+    document.getElementById("f-msg").value="";
+  }else{
+    alert("No pudimos enviar tu postulación. Por favor intenta nuevamente en unos minutos.");
+  }
 }
 async function loadContent(){
   try{
