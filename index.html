@@ -350,15 +350,23 @@ async function loadContent(){
     if(Array.isArray(rN)&&rN.length){
       var data=rN.filter(function(r){return r[0];});
       if(data.length){
-        // Ordenar de más reciente a más antigua
-        var withDates=data.map(function(row){return {row:row,d:parseFechaNoticia(row[1])};});
-        var allParsed=withDates.every(function(x){return x.d;});
+        var manualIdx=data.findIndex(function(r){return r[4]==="SI";});
         var ordered;
-        if(allParsed){
-          ordered=withDates.sort(function(a,b){return b.d-a.d;}).map(function(x){return x.row;});
+        if(manualIdx>-1){
+          // Hay una noticia marcada manualmente como destacada
+          var feat=data[manualIdx];
+          var rest=data.slice(0,manualIdx).concat(data.slice(manualIdx+1));
+          ordered=[feat].concat(rest);
         }else{
-          // Sin fechas parseables: se asume que la última fila cargada es la más reciente
-          ordered=data.slice().reverse();
+          // Sin marca manual: ordenar de más reciente a más antigua
+          var withDates=data.map(function(row){return {row:row,d:parseFechaNoticia(row[1])};});
+          var allParsed=withDates.every(function(x){return x.d;});
+          if(allParsed){
+            ordered=withDates.sort(function(a,b){return b.d-a.d;}).map(function(x){return x.row;});
+          }else{
+            // Sin fechas parseables: se asume que la última fila cargada es la más reciente
+            ordered=data.slice().reverse();
+          }
         }
         var cardHtml=function(row){
           return '<div class="noticia-card">'+
