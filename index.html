@@ -55,11 +55,22 @@ section{padding:5rem 1.5rem}
 .sec-tag{display:inline-block;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.25);border-radius:20px;padding:.2rem .8rem;font-size:.62rem;font-weight:700;color:#0ea5e9;letter-spacing:2px;margin-bottom:.6rem;text-transform:uppercase}
 .sec-title{font-size:1.85rem;font-weight:900;letter-spacing:2px;margin-bottom:.4rem;background:linear-gradient(135deg,#fff,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .sec-sub{font-size:.8rem;color:rgba(255,255,255,.4)}
-.noticias-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.25rem}
-.noticia-card{background:#0f1e3a;border:1px solid rgba(37,99,235,.12);border-radius:14px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s;cursor:pointer}
+.noticia-featured{margin-bottom:1.75rem}
+.noticia-featured .noticia-card{display:grid;grid-template-columns:1.15fr 1fr;max-width:920px;margin:0 auto;border-color:rgba(14,165,233,.4);box-shadow:0 10px 40px rgba(14,165,233,.15)}
+.noticia-featured .noticia-img{height:100%;min-height:260px}
+.noticia-featured .noticia-body{padding:1.75rem;display:flex;flex-direction:column;justify-content:center}
+.noticia-featured .noticia-fecha{display:inline-flex;align-items:center;gap:.4rem}
+.noticia-featured .noticia-fecha::before{content:"● EN VIVO";letter-spacing:1px;color:#0ea5e9}
+.noticia-featured .noticia-titulo{font-size:1.4rem;margin-bottom:.7rem}
+.noticia-featured .noticia-texto{font-size:.88rem}
+.noticias-carousel-wrap{position:relative}
+.noticias-grid{display:flex;gap:1.25rem;overflow-x:auto;scroll-behavior:smooth;padding-bottom:.5rem;scrollbar-width:none;-ms-overflow-style:none}
+.noticias-grid::-webkit-scrollbar{display:none}
+.noticia-card{flex:0 0 290px;min-width:290px;background:#0f1e3a;border:1px solid rgba(37,99,235,.12);border-radius:14px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s;cursor:pointer}
 .noticia-card:hover{transform:translateY(-5px);border-color:rgba(14,165,233,.35);box-shadow:0 8px 30px rgba(14,165,233,.1)}
 .noticia-img{width:100%;height:220px;object-fit:cover;object-position:center top;cursor:zoom-in;transition:opacity .2s}
 .noticia-img:hover{opacity:.9}
+@media (max-width:720px){.noticia-featured .noticia-card{grid-template-columns:1fr}.noticia-featured .noticia-img{min-height:200px}}
 .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;align-items:center;justify-content:center;cursor:zoom-out}
 .lightbox.open{display:flex}
 .lightbox img{max-width:95vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.8)}
@@ -189,7 +200,12 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
 <section class="s-mid" id="noticias">
   <div class="container">
     <div class="sec-head"><div class="sec-tag">Noticias</div><div class="sec-title">NOVEDADES DEL CLUB</div><div class="sec-sub">Últimas noticias y resultados</div></div>
-    <div class="noticias-grid" id="noticias-grid"></div>
+    <div class="noticia-featured" id="noticia-featured"></div>
+    <div class="noticias-carousel-wrap">
+      <button class="carousel-btn prev" onclick="scrollNoticias(-1)">&#8592;</button>
+      <div class="noticias-grid" id="noticias-grid"></div>
+      <button class="carousel-btn next" onclick="scrollNoticias(1)">&#8594;</button>
+    </div>
   </div>
 </section>
 <section class="s-dark" id="galeria">
@@ -280,6 +296,25 @@ var SH="https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4c
 function scrollCar(dir){
   document.getElementById("dep-carousel").scrollBy({left:dir*660,behavior:"smooth"});
 }
+function scrollNoticias(dir){
+  document.getElementById("noticias-grid").scrollBy({left:dir*330,behavior:"smooth"});
+}
+function parseFechaNoticia(str){
+  if(!str) return null;
+  var s=String(str).trim();
+  var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){
+    var day=+m[1],mon=+m[2],year=+m[3];
+    if(year<100) year+=2000;
+    var d=new Date(year,mon-1,day);
+    return isNaN(d.getTime())?null:d;
+  }
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    var d2=new Date(s);
+    return isNaN(d2.getTime())?null:d2;
+  }
+  return null;
+}
 function enviarPostulacion(){
   var n=document.getElementById("f-nombre").value.trim();
   var e=document.getElementById("f-edad").value.trim();
@@ -315,8 +350,17 @@ async function loadContent(){
     if(Array.isArray(rN)&&rN.length){
       var data=rN.filter(function(r){return r[0];});
       if(data.length){
-        var g=document.getElementById("noticias-grid");
-        g.innerHTML=data.map(function(row){
+        // Ordenar de más reciente a más antigua
+        var withDates=data.map(function(row){return {row:row,d:parseFechaNoticia(row[1])};});
+        var allParsed=withDates.every(function(x){return x.d;});
+        var ordered;
+        if(allParsed){
+          ordered=withDates.sort(function(a,b){return b.d-a.d;}).map(function(x){return x.row;});
+        }else{
+          // Sin fechas parseables: se asume que la última fila cargada es la más reciente
+          ordered=data.slice().reverse();
+        }
+        var cardHtml=function(row){
           return '<div class="noticia-card">'+
             (row[3]?'<img class="noticia-img" src="'+row[3]+'" alt="" onclick="openLightbox(this.src)">':'')+
             '<div class="noticia-body">'+
@@ -324,7 +368,9 @@ async function loadContent(){
             '<div class="noticia-titulo">'+row[0]+'</div>'+
             '<div class="noticia-texto">'+row[2]+'</div>'+
             '</div></div>';
-        }).join("");
+        };
+        document.getElementById("noticia-featured").innerHTML=cardHtml(ordered[0]);
+        document.getElementById("noticias-grid").innerHTML=ordered.slice(1).map(cardHtml).join("");
       }
     }
 
