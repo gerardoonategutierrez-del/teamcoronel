@@ -109,13 +109,12 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <div class="tp" id="tp-d">
 <div class="fs"><h3>+ Agregar Deportista</h3>
 <div class="fg"><div class="fi"><label>NOMBRE</label><input id="d0" type="text" placeholder="Apellidos Nombre"></div>
-<div class="fi"><label>EDAD</label><input id="d1" type="text" placeholder="ej: 15 años"></div></div>
-<div class="fg"><div class="fi"><label>CATEGORÍA</label><select id="d2"><option>AR Velocidad</option><option>AR Fondo</option><option>INT Velocidad</option><option>INT Fondo</option><option>Transición</option></select></div>
-<div class="fi"><label>FOTO</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d3','d')">
+<div class="fi"><label>CATEGORÍA</label><input id="d1" type="text" placeholder="ej: Alto Rendimiento"></div></div>
+<div class="fg"><div class="fi"><label>FOTO</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d2','d')">
 <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd">Subiendo...</div>
-<img class="uap" id="pd3"></div><input type="hidden" id="d3"></div></div>
-<div class="fi"><label>LOGRO</label><input id="d4" type="text" placeholder="ej: Selección Nacional 2026"></div>
-<button class="btn" onclick="add('landing_deportistas',['d0','d1','d2','d3','d4'],cD)">Agregar</button>
+<img class="uap" id="pd2"></div><input type="hidden" id="d2"></div></div>
+<div class="fi"><label>LOGRO</label><input id="d3" type="text" placeholder="ej: Selección Nacional 2026"></div>
+<button class="btn" onclick="add('landing_deportistas',['d0','d1','d2','d3'],cD)">Agregar</button>
 </div><div id="lD"><div class="ie">Cargando...</div></div></div>
 <div class="tp" id="tp-t">
 <div class="fs"><h3>+ Agregar Staff</h3>
@@ -377,9 +376,9 @@ async function cD(){
     var el=document.getElementById("lD");
     if(!d.length){el.innerHTML='<div class="ie">Sin deportistas a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
-        +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[2]+' &middot; '+r[1]+'</div>'
-        +(r[4]?'<div class="is">&#127942; '+r[4]+'</div>':'')+
+      return '<div class="ic">'+(r[2]?'<img class="ii" src="'+r[2]+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
+        +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[1]+'</div>'
+        +(r[3]?'<div class="is">&#127942; '+r[3]+'</div>':'')+
         '<div class="ia">'
         +'<button class="btn bs bo" onclick="edit(\'D\','+i+',\'landing_deportistas\',cD)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_deportistas\','+i+',cD)">Eliminar</button>'
@@ -424,7 +423,7 @@ async function cSP(){
 
 var _LABELS={
   N:['TÍTULO','FECHA','TEXTO','FOTO'],
-  D:['NOMBRE','EDAD','CATEGORÍA','FOTO','LOGRO'],
+  D:['NOMBRE','CATEGORÍA','FOTO','LOGRO'],
   T:['NOMBRE','CARGO','DESCRIPCIÓN','FOTO'],
   SP:['NOMBRE','INSTAGRAM','DESCRIPCIÓN','LOGO']
 };
