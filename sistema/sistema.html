@@ -763,7 +763,10 @@ body {
 
   <div class="grid-2" style="margin-bottom:1rem">
     <div class="card">
-      <div class="stat-label" style="margin-bottom:.75rem">Nuevo registro</div>
+      <div class="stat-label" style="margin-bottom:.75rem" id="pt-form-titulo">Nuevo registro</div>
+      <div id="pt-editando-aviso" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:var(--orange);border-radius:8px;padding:.5rem .7rem;font-size:.72rem;margin-bottom:.7rem">
+        ✎ Editando un registro existente
+      </div>
       <div class="fg">
         <label class="fl">Deportista</label>
         <select class="fi" id="pt-dep-sel" onchange="ptMostrarGrafico()"><option value="">— Seleccionar —</option></select>
@@ -787,7 +790,8 @@ body {
         <label class="fl">Fecha del control</label>
         <input type="date" class="fi" id="pt-fecha">
       </div>
-      <button class="btn btn-primary btn-full" onclick="ptGuardar()">⏱ Registrar</button>
+      <button class="btn btn-primary btn-full" id="pt-btn-guardar" onclick="ptGuardar()">⏱ Registrar</button>
+      <button class="btn btn-full" id="pt-btn-cancelar" onclick="ptCancelarEdicion()" style="display:none;margin-top:.4rem;background:none;border:1px solid var(--border);color:var(--t3)">Cancelar edición</button>
     </div>
     <div>
       <div class="stat-label" style="margin-bottom:.5rem">Últimos registros</div>
@@ -1806,6 +1810,8 @@ function ptInit(){
   ptMostrarRecientes();
 }
 
+var ptEditandoTid = null; // null = creando nuevo registro; string = editando ese registro
+
 function ptGuardar(){
   var depId  = parseInt((document.getElementById('pt-dep-sel')||{}).value);
   var tiempo = parseFloat((document.getElementById('pt-tiempo')||{}).value);
@@ -1833,12 +1839,34 @@ function ptGuardar(){
 
   var lbl = tipo==='lanzado'?'200mt Lanzado':tipo==='parado'?'200mt Detenido':'100mt';
 
-  // Save to historial
   if(!athletesExtra[depId])        athletesExtra[depId]        = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
   if(!athletesExtra[String(depId)]) athletesExtra[String(depId)] = athletesExtra[depId];
   if(!Array.isArray(athletesExtra[depId].historial)) athletesExtra[depId].historial = [];
 
-  var entrada = {fecha:f, tipo:'tiempo', nota:'⏱ '+lbl+': '+tiempo+'"', tiempo:tiempo, tipoControl:tipo};
+  if(ptEditandoTid){
+    // Modo edición: actualiza el registro existente en vez de crear uno nuevo
+    var hist = athletesExtra[depId].historial;
+    var entradaExistente = hist.find(function(h){ return h._tid===ptEditandoTid; });
+    if(!entradaExistente){ toast('No se encontró el registro a editar','err'); ptCancelarEdicion(); return; }
+    entradaExistente.fecha = f;
+    entradaExistente.tiempo = tiempo;
+    entradaExistente.tipoControl = tipo;
+    entradaExistente.nota = '⏱ '+lbl+': '+tiempo+'"';
+    athletesExtra[String(depId)] = athletesExtra[depId];
+
+    saveData();
+    ptCancelarEdicion(); // sale del modo edición y limpia el formulario
+    ptMostrarRecientes();
+    ptMostrarGrafico();
+    toast(tiempo+'" actualizado para '+a.nm+' · '+f+' ✓');
+    return;
+  }
+
+  // Modo creación: agrega un nuevo registro
+  var entrada = {
+    _tid: 'h_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    fecha:f, tipo:'tiempo', nota:'⏱ '+lbl+': '+tiempo+'"', tiempo:tiempo, tipoControl:tipo
+  };
   athletesExtra[depId].historial.push(entrada);
   athletesExtra[String(depId)] = athletesExtra[depId];
 
@@ -1851,6 +1879,61 @@ function ptGuardar(){
   ptMostrarGrafico();
   toast(tiempo+'" registrado para '+a.nm+' · '+f+' ✓');
 }
+
+// Prepara el formulario para editar un registro existente
+function ptEditarIniciar(depId, tid){
+  var ex = athletesExtra[depId] || athletesExtra[String(depId)] || {};
+  var h = (ex.historial||[]).find(function(x){ return x._tid===tid; });
+  if(!h){ toast('No se encontró el registro','err'); return; }
+
+  document.getElementById('pt-dep-sel').value = depId;
+  document.getElementById('pt-tiempo').value = h.tiempo || '';
+  document.getElementById('pt-tipo').value = h.tipoControl || 'lanzado';
+
+  // Convierte DD/MM/YYYY a YYYY-MM-DD para el input de fecha
+  var p = (h.fecha||'').split('/');
+  if(p.length===3) document.getElementById('pt-fecha').value = p[2]+'-'+p[1]+'-'+p[0];
+
+  ptEditandoTid = tid;
+  document.getElementById('pt-form-titulo').textContent = 'Editando registro';
+  document.getElementById('pt-editando-aviso').style.display = 'block';
+  document.getElementById('pt-btn-guardar').textContent = '💾 Guardar cambios';
+  document.getElementById('pt-btn-cancelar').style.display = 'block';
+
+  ptMostrarGrafico();
+  document.getElementById('pt-tiempo').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function ptCancelarEdicion(){
+  ptEditandoTid = null;
+  document.getElementById('pt-tiempo').value = '';
+  document.getElementById('pt-tipo').value = '';
+  document.getElementById('pt-fecha').value = '';
+  document.getElementById('pt-form-titulo').textContent = 'Nuevo registro';
+  document.getElementById('pt-editando-aviso').style.display = 'none';
+  document.getElementById('pt-btn-guardar').textContent = '⏱ Registrar';
+  document.getElementById('pt-btn-cancelar').style.display = 'none';
+}
+
+// Elimina un registro de tiempo por su identificador único
+function eliminarTiempoPorId(depId, tid){
+  if(!confirm('¿Eliminar este registro de tiempo? Esta acción no se puede deshacer.')) return;
+  var ex = athletesExtra[depId] || athletesExtra[String(depId)];
+  if(!ex || !Array.isArray(ex.historial)) return;
+  var idx = ex.historial.findIndex(function(h){ return h._tid===tid; });
+  if(idx===-1){ toast('No se encontró el registro','err'); return; }
+  ex.historial.splice(idx,1);
+  athletesExtra[depId] = ex;
+  athletesExtra[String(depId)] = ex;
+
+  if(ptEditandoTid===tid) ptCancelarEdicion();
+
+  saveData();
+  ptMostrarRecientes();
+  ptMostrarGrafico();
+  toast('Registro eliminado ✓');
+}
+
 
 function ptMostrarGrafico() {
   var depId = parseInt((document.getElementById('pt-dep-sel')||{}).value);
@@ -1886,6 +1969,13 @@ function ptMostrarGrafico() {
   // Table
   var tablaEl = document.getElementById('pt-historial-tabla');
   if(tablaEl) {
+    // Asigna un identificador único a registros antiguos que no lo tengan
+    var huboCambio = false;
+    hist.forEach(function(h){
+      if(!h._tid){ h._tid = 'h_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); huboCambio = true; }
+    });
+    if(huboCambio) saveData();
+
     function pfPt(f){var p=(f||'').split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}
     var sortedPt = hist.slice().sort(function(a,b){return pfPt(b.fecha)-pfPt(a.fecha);});
     var rows = sortedPt.map(function(h){
@@ -1894,9 +1984,12 @@ function ptMostrarGrafico() {
       return '<div class="tiempo-recent" style="margin-bottom:.35rem">'
         +'<div><div class="tiempo-recent-name">'+h.fecha+'</div>'
         +'<div class="tiempo-recent-meta">'+lbl+'</div></div>'
-        +'<div style="display:flex;align-items:center;gap:.5rem">'
+        +'<div style="display:flex;align-items:center;gap:.4rem">'
         +'<div class="tiempo-recent-val">'+(tv?tv+'"':'—')+'</div>'
-        +'<button onclick="eliminarTiempoPorFecha('+depId+',\''+h.fecha+'\')" '
+        +'<button onclick="ptEditarIniciar('+depId+',\''+h._tid+'\')" '
+        +'style="background:none;border:1px solid rgba(59,130,246,.35);border-radius:4px;'
+        +'color:var(--blue-lt);cursor:pointer;font-size:.65rem;padding:.15rem .45rem" title="Editar">✎</button>'
+        +'<button onclick="eliminarTiempoPorId('+depId+',\''+h._tid+'\')" '
         +'style="background:none;border:1px solid rgba(239,68,68,.35);border-radius:4px;'
         +'color:var(--red);cursor:pointer;font-size:.65rem;padding:.15rem .45rem" title="Eliminar">✕</button>'
         +'</div></div>';
@@ -3232,12 +3325,6 @@ function _saveDataCore() {
       antropometria:ANTROPOMETRIA,
     }));
   } catch(e) { console.warn('save failed',e); }
-}
-
-function ptEliminarDesdeTabla(btn) {
-  var depId = parseInt(btn.dataset.depid);
-  var fecha = btn.dataset.fecha;
-  eliminarTiempoPorFecha(depId, fecha);
 }
 
 function cerrarSesion() {
