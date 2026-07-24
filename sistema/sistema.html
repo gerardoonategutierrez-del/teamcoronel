@@ -1810,7 +1810,7 @@ function ptInit(){
 
 var ptEditandoTid = null; // null = creando nuevo registro; string = editando ese registro
 
-function ptGuardar(){
+async function ptGuardar(){
   var depId  = parseInt((document.getElementById('pt-dep-sel')||{}).value);
   var tiempo = parseFloat((document.getElementById('pt-tiempo')||{}).value);
   var tipo   = (document.getElementById('pt-tipo')||{}).value;
@@ -1841,6 +1841,9 @@ function ptGuardar(){
   if(!athletesExtra[String(depId)]) athletesExtra[String(depId)] = athletesExtra[depId];
   if(!Array.isArray(athletesExtra[depId].historial)) athletesExtra[depId].historial = [];
 
+  var btnGuardar = document.getElementById('pt-btn-guardar');
+  var btnTxtOriginal = btnGuardar ? btnGuardar.textContent : '';
+
   if(ptEditandoTid){
     // Modo edición: actualiza el registro existente en vez de crear uno nuevo
     var hist = athletesExtra[depId].historial;
@@ -1853,6 +1856,12 @@ function ptGuardar(){
     athletesExtra[String(depId)] = athletesExtra[depId];
 
     saveData();
+    // Sincroniza de inmediato con Sheets (sin esperar el debounce) para que
+    // un refresh justo después del guardado no traiga de vuelta el dato viejo.
+    if(btnGuardar){ btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+    try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+    if(btnGuardar){ btnGuardar.disabled = false; }
+
     ptCancelarEdicion(); // sale del modo edición y limpia el formulario
     ptMostrarRecientes();
     ptMostrarGrafico();
@@ -1872,6 +1881,10 @@ function ptGuardar(){
   if(ptRecientes.length>10) ptRecientes.pop();
 
   saveData();
+  if(btnGuardar){ btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+  try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+  if(btnGuardar){ btnGuardar.disabled = false; btnGuardar.textContent = btnTxtOriginal || '⏱ Registrar'; }
+
   document.getElementById('pt-tiempo').value = '';
   ptMostrarRecientes();
   ptMostrarGrafico();
@@ -1924,7 +1937,7 @@ function ptCancelarEdicion(){
 }
 
 // Elimina un registro de tiempo por su identificador único
-function eliminarTiempoPorId(depId, tid){
+async function eliminarTiempoPorId(depId, tid){
   if(!confirm('¿Eliminar este registro de tiempo? Esta acción no se puede deshacer.')) return;
   var ex = athletesExtra[depId] || athletesExtra[String(depId)];
   if(!ex || !Array.isArray(ex.historial)) return;
@@ -1937,6 +1950,10 @@ function eliminarTiempoPorId(depId, tid){
   if(ptEditandoTid===tid) ptCancelarEdicion();
 
   saveData();
+  // Sincroniza de inmediato con Sheets para que un refresh rápido no traiga
+  // de vuelta el registro recién eliminado.
+  try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+
   ptMostrarRecientes();
   ptMostrarGrafico();
   toast('Registro eliminado ✓');
@@ -3221,11 +3238,26 @@ function generarCertificado(id) {
 
 // ══ GOOGLE SHEETS SYNC ══════════════════════════════════
 
-var _syncPending = false;
+var _syncInFlight = null; // Promise de la sincronización actualmente en curso (o null)
 
+// Punto de entrada público: si ya hay una sincronización en curso, espera a
+// que termine y luego lanza una nueva para asegurar que el estado más
+// reciente (por ejemplo, la edición que se acaba de hacer) quede subido.
+// Antes, una llamada mientras había otra en curso se saltaba en silencio
+// y el dato podía nunca llegar a subirse a tiempo.
 async function syncToSheets() {
-  if(_syncPending) return;
-  _syncPending = true;
+  if(_syncInFlight) {
+    try { await _syncInFlight; } catch(e) {}
+  }
+  _syncInFlight = _ejecutarSyncToSheets();
+  try {
+    await _syncInFlight;
+  } finally {
+    _syncInFlight = null;
+  }
+}
+
+async function _ejecutarSyncToSheets() {
   console.log('[SYNC] Starting syncToSheets...');
 
   try {
@@ -3268,8 +3300,7 @@ async function syncToSheets() {
     console.warn('Sheets sync error:', e);
     var el = document.getElementById('sync-status');
     if(el) { el.textContent = '☁ Error'; el.style.color = 'var(--red)'; }
-  } finally {
-    _syncPending = false;
+    throw e;
   }
 }
 
