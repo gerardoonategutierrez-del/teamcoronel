@@ -776,8 +776,9 @@ body {
         <div class="fg">
           <label class="fl">Tipo</label>
           <select class="fi" id="pt-tipo">
+            <option value="" selected disabled>-- Selecciona --</option>
             <option value="lanzado">200mt Lanzado</option>
-            <option value="parado">200mt Parado</option>
+            <option value="parado">200mt Detenido</option>
             <option value="100m">100mt</option>
           </select>
         </div>
@@ -1813,6 +1814,7 @@ function ptGuardar(){
 
   if(!depId)  { toast('Selecciona un deportista','err'); return; }
   if(!tiempo||isNaN(tiempo)){ toast('Ingresa un tiempo válido','err'); return; }
+  if(!tipo){ toast('Selecciona el tipo de control (Lanzado / Detenido / 100mt)','err'); return; }
 
   var a = ATHLETES.find(function(x){ return x.id===depId; });
   if(!a) return;
@@ -1829,7 +1831,7 @@ function ptGuardar(){
     f = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
   }
 
-  var lbl = tipo==='lanzado'?'200mt Lanzado':tipo==='parado'?'200mt Parado':'100mt';
+  var lbl = tipo==='lanzado'?'200mt Lanzado':tipo==='parado'?'200mt Detenido':'100mt';
 
   // Save to historial
   if(!athletesExtra[depId])        athletesExtra[depId]        = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
@@ -1887,7 +1889,7 @@ function ptMostrarGrafico() {
     function pfPt(f){var p=(f||'').split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}
     var sortedPt = hist.slice().sort(function(a,b){return pfPt(b.fecha)-pfPt(a.fecha);});
     var rows = sortedPt.map(function(h){
-      var lbl = h.tipoControl==='parado'?'200mt Parado':h.tipoControl==='100m'?'100mt':'200mt Lanzado';
+      var lbl = h.tipoControl==='parado'?'200mt Detenido':h.tipoControl==='100m'?'100mt':'200mt Lanzado';
       var mn=(h.nota||'').match(/([0-9]+[.,][0-9]+)"/); var tv=h.tiempo||(mn?parseFloat(mn[1].replace(',','.')):null);
       return '<div class="tiempo-recent" style="margin-bottom:.35rem">'
         +'<div><div class="tiempo-recent-name">'+h.fecha+'</div>'
@@ -2931,7 +2933,7 @@ function mostrarTiemposModal(id) {
     function pf(f){var p=(f||'').split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}
     var sortedHist = hist.slice().sort(function(a,b){return pf(a.fecha)-pf(b.fecha);}).reverse();
     var rows = sortedHist.slice(0,8).map(function(h){
-      var lbl = h.tipoControl==='parado'?'200mt Parado':h.tipoControl==='100m'?'100mt':'200mt Lanzado';
+      var lbl = h.tipoControl==='parado'?'200mt Detenido':h.tipoControl==='100m'?'100mt':'200mt Lanzado';
       var mn=(h.nota||'').match(/([\d]+[.,][\d]+)"/); var tv=h.tiempo||(mn?parseFloat(mn[1].replace(',','.')):null);
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(55,65,81,.3)">'
         +'<div><div style="font-size:.75rem;color:var(--t2)">'+h.fecha+'</div>'
