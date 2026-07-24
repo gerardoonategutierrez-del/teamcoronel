@@ -3310,7 +3310,7 @@ async function syncFromSheets() {
   console.log('[SYNC] Starting syncFromSheets...');
 
   try {
-    var resp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=datos');
+    var resp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec?sheet=datos&_ts='+Date.now(), {cache:'no-store'});
     console.log('[SYNC] Response status:', resp.status);
     var text = await resp.text();
     console.log('[SYNC] Raw response:', text.substring(0,200));
