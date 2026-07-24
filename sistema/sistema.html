@@ -3283,7 +3283,7 @@ async function _ejecutarSyncToSheets() {
     console.log('[SYNC] Sending '+rows.length+' rows to Sheets...');
     var postResp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({action:'clear_and_write', sheet:'datos', rows:rows})
     });
     var postText = await postResp.text();
