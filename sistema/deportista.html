@@ -160,24 +160,26 @@ async function cargarDatos() {
 
     _athlete = athlete;
     renderPantalla();
+    generarCertificado(); // descarga automática apenas se confirma el login
 
   } catch(e) {
     document.getElementById('body-content').innerHTML = '<div class="loading">Error al cargar datos. Verifica tu conexion.</div>';
   }
 }
 
-// Pantalla única: solo la opción de descargar el certificado.
-// A propósito NO se muestra la ficha (tiempos, antropometría, exámenes,
-// diagnóstico del coach) — el acceso de deportista es exclusivamente
-// para obtener su certificado, nada más.
+// Pantalla única: solo la confirmación y la opción de volver a descargar
+// el certificado (por si el navegador bloqueó la ventana automática, o
+// si el deportista necesita otra copia). A propósito NO se muestra la
+// ficha (tiempos, antropometría, exámenes, diagnóstico del coach) — el
+// acceso de deportista es exclusivamente para obtener su certificado.
 function renderPantalla() {
   var a = _athlete;
   document.getElementById('body-content').innerHTML =
     '<div class="cert-card">'
     + '<div class="cert-icon">&#128220;</div>'
     + '<div class="cert-title">Hola, ' + a.nm + '</div>'
-    + '<div class="cert-sub">Descarga tu certificado de deportista federado del Team Coronel, listo para imprimir o guardar como PDF.</div>'
-    + '<button class="btn-cert" id="btn-cert" onclick="generarCertificado()">&#128220; Descargar mi Certificado</button>'
+    + '<div class="cert-sub">Tu certificado de deportista federado del Team Coronel se está descargando automáticamente. Si no se abrió, usa el botón de abajo.</div>'
+    + '<button class="btn-cert" id="btn-cert" onclick="generarCertificado()">&#128220; Descargar certificado</button>'
     + '</div>';
 }
 
