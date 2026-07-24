@@ -1887,7 +1887,13 @@ function ptEditarIniciar(depId, tid){
   if(!h){ toast('No se encontró el registro','err'); return; }
 
   document.getElementById('pt-dep-sel').value = depId;
-  document.getElementById('pt-tiempo').value = h.tiempo || '';
+
+  // Algunos registros antiguos no tienen el campo "tiempo" directo,
+  // solo lo tienen embebido en el texto de la nota (ej: ⏱ 200mt Lanzado: 19.5")
+  var mn = (h.nota||'').match(/([0-9]+[.,][0-9]+)"/);
+  var tiempoValor = h.tiempo || (mn ? parseFloat(mn[1].replace(',','.')) : '');
+  document.getElementById('pt-tiempo').value = tiempoValor;
+
   document.getElementById('pt-tipo').value = h.tipoControl || 'lanzado';
 
   // Convierte DD/MM/YYYY a YYYY-MM-DD para el input de fecha
@@ -1901,7 +1907,11 @@ function ptEditarIniciar(depId, tid){
   document.getElementById('pt-btn-cancelar').style.display = 'block';
 
   ptMostrarGrafico();
-  document.getElementById('pt-tiempo').scrollIntoView({behavior:'smooth', block:'center'});
+
+  // Sube hasta el inicio del formulario completo (título) en vez de centrar
+  // solo el campo de tiempo, para que se vean todos los campos de una vez
+  // (deportista, tiempo, tipo y fecha) sin tener que seguir desplazando la pantalla.
+  document.getElementById('pt-form-titulo').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function ptCancelarEdicion(){
