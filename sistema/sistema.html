@@ -2150,6 +2150,11 @@ document.addEventListener('DOMContentLoaded', function(){
     if(ok) {
       buildDash();
       _saveDataCore();
+      // Refresca la vista de Tiempos (si está abierta) para que los botones
+      // de Editar/Eliminar usen los datos recién sincronizados y no queden
+      // apuntando a un registro que ya no existe en memoria.
+      if(typeof ptMostrarGrafico==='function') ptMostrarGrafico();
+      if(typeof ptMostrarRecientes==='function') ptMostrarRecientes();
     } else {
       // Sheets empty or error - push local data up
       console.log('[SYNC] Sheets empty, pushing local data...');
@@ -3385,6 +3390,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(ok) {
       buildDash();
       _saveDataCore();
+      if(typeof ptMostrarGrafico==='function') ptMostrarGrafico();
+      if(typeof ptMostrarRecientes==='function') ptMostrarRecientes();
     } else {
       console.log('[SYNC] Sheets empty, pushing local data...');
       syncToSheets();
