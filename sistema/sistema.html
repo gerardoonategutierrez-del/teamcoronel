@@ -3525,6 +3525,222 @@ function antroSelDep(val) {
   antroMostrarHistorial();
 }
 
+// ── Antro/Lab: subida de PDF con extracción automática por IA ───
+
+var _antroTipoUpload = 'antro'; // 'antro' | 'lab' — qué tipo de informe se está subiendo
+var _antroExtraido = null;      // datos que la IA extrajo, pendientes de confirmar
+
+function switchAntroTipo(tipo, btn) {
+  _antroTipoUpload = tipo;
+  document.querySelectorAll('#antro-upload-card .tabs .tab').forEach(function(b){ b.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
+}
+
+async function antroProcesarPDF(inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  if(!_antroDepId) { toast('Selecciona un deportista primero', 'err'); return; }
+
+  document.getElementById('antro-pdf-nombre').textContent = '📄 ' + file.name;
+
+  var wrap = document.getElementById('antro-upload-card');
+  wrap.style.opacity = '.55';
+  wrap.style.pointerEvents = 'none';
+  toast('Leyendo PDF con IA...');
+
+  try {
+    var base64 = await new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    var prompt;
+    if(_antroTipoUpload === 'antro') {
+      prompt = 'Este PDF es un informe antropométrico de un deportista. '
+        + 'Extrae los datos y responde SOLO con un objeto JSON válido (sin texto adicional, sin markdown) con estas claves exactas:\n'
+        + '{"fecha":"DD/MM/AAAA","peso":numero,"talla":numero,"pct_grasa":"numero","pct_musculo":"numero","somatotipo":"texto o vacío","obs":"observación breve o vacío"}\n'
+        + 'Si algún dato no aparece en el informe, usa "" para ese campo. La fecha debe ser la del informe (o la de hoy si no aparece).';
+    } else {
+      prompt = 'Este PDF es un examen de laboratorio de un deportista. '
+        + 'Extrae los datos y responde SOLO con un objeto JSON válido (sin texto adicional, sin markdown) con estas claves exactas:\n'
+        + '{"fecha":"DD/MM/AAAA","hemoglobina":"texto o vacío","ferritina":"texto o vacío","vitamina_d":"texto o vacío","calcio":"texto o vacío","ck_total":"texto o vacío","valores_alterados":"lista de valores fuera de rango o vacío"}\n'
+        + 'Si algún dato no aparece en el examen, usa "" para ese campo. La fecha debe ser la del examen (o la de hoy si no aparece).';
+    }
+
+    var resp = await fetch('/api/coach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, pdf_base64: base64 })
+    });
+    var data = await resp.json();
+
+    if(!resp.ok) {
+      toast('Error IA: ' + (data.error ? data.error.message : resp.status), 'err');
+      wrap.style.opacity = ''; wrap.style.pointerEvents = '';
+      return;
+    }
+
+    var textBlock = data.content && Array.isArray(data.content) ? data.content.find(function(b){ return b.type==='text'; }) : null;
+    if(!textBlock) {
+      toast('La IA no devolvió datos legibles', 'err');
+      wrap.style.opacity = ''; wrap.style.pointerEvents = '';
+      return;
+    }
+
+    var jsonText = textBlock.text.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'');
+    var extraido;
+    try { extraido = JSON.parse(jsonText); }
+    catch(e) {
+      toast('No se pudo interpretar la respuesta de la IA', 'err');
+      wrap.style.opacity = ''; wrap.style.pointerEvents = '';
+      return;
+    }
+
+    _antroExtraido = extraido;
+    antroMostrarPreview(extraido);
+
+  } catch(e) {
+    toast('Error al procesar el PDF: ' + e.message, 'err');
+  }
+  wrap.style.opacity = '';
+  wrap.style.pointerEvents = '';
+}
+
+function antroMostrarPreview(d) {
+  var el = document.getElementById('antro-preview');
+  var hoy = new Date();
+  var fechaDefault = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+
+  if(_antroTipoUpload === 'antro') {
+    el.innerHTML =
+        '<div class="fi-row"><div class="fg"><label class="fl">Fecha</label><input class="fi" id="antro-f-fecha" value="'+(d.fecha||fechaDefault)+'"></div>'
+      +   '<div class="fg"><label class="fl">Peso (kg)</label><input class="fi" id="antro-f-peso" value="'+(d.peso||'')+'"></div></div>'
+      + '<div class="fi-row"><div class="fg"><label class="fl">Talla (cm)</label><input class="fi" id="antro-f-talla" value="'+(d.talla||'')+'"></div>'
+      +   '<div class="fg"><label class="fl">% Grasa</label><input class="fi" id="antro-f-grasa" value="'+(d.pct_grasa||'')+'"></div></div>'
+      + '<div class="fi-row"><div class="fg"><label class="fl">% Músculo</label><input class="fi" id="antro-f-musculo" value="'+(d.pct_musculo||'')+'"></div>'
+      +   '<div class="fg"><label class="fl">Somatotipo</label><input class="fi" id="antro-f-somato" value="'+(d.somatotipo||'')+'"></div></div>'
+      + '<div class="fg"><label class="fl">Observación</label><input class="fi" id="antro-f-obs" value="'+(d.obs||'')+'"></div>';
+  } else {
+    el.innerHTML =
+        '<div class="fi-row"><div class="fg"><label class="fl">Fecha</label><input class="fi" id="antro-f-fecha" value="'+(d.fecha||fechaDefault)+'"></div>'
+      +   '<div class="fg"><label class="fl">Hemoglobina</label><input class="fi" id="antro-f-hb" value="'+(d.hemoglobina||'')+'"></div></div>'
+      + '<div class="fi-row"><div class="fg"><label class="fl">Ferritina</label><input class="fi" id="antro-f-ferritina" value="'+(d.ferritina||'')+'"></div>'
+      +   '<div class="fg"><label class="fl">Vitamina D</label><input class="fi" id="antro-f-vitd" value="'+(d.vitamina_d||'')+'"></div></div>'
+      + '<div class="fi-row"><div class="fg"><label class="fl">Calcio</label><input class="fi" id="antro-f-calcio" value="'+(d.calcio||'')+'"></div>'
+      +   '<div class="fg"><label class="fl">CK Total</label><input class="fi" id="antro-f-ck" value="'+(d.ck_total||'')+'"></div></div>'
+      + '<div class="fg"><label class="fl">Valores alterados</label><input class="fi" id="antro-f-alt" value="'+(d.valores_alterados||'')+'"></div>';
+  }
+
+  document.getElementById('antro-upload-card').style.display = 'none';
+  document.getElementById('antro-resultado').style.display = 'block';
+}
+
+async function antroConfirmar() {
+  if(!_antroDepId) return;
+  var id = _antroDepId;
+
+  if(!ANTROPOMETRIA[id]) ANTROPOMETRIA[id] = { nombre:'', obs_salud:'', mediciones:[], laboratorio:[], notas:[] };
+  ANTROPOMETRIA[String(id)] = ANTROPOMETRIA[id];
+  var reg = ANTROPOMETRIA[id];
+  if(!Array.isArray(reg.mediciones)) reg.mediciones = [];
+  if(!Array.isArray(reg.laboratorio)) reg.laboratorio = [];
+
+  var btn = document.querySelector('#antro-resultado .btn-primary');
+  var btnTxt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  if(_antroTipoUpload === 'antro') {
+    reg.mediciones.unshift({
+      fecha: document.getElementById('antro-f-fecha').value,
+      peso: document.getElementById('antro-f-peso').value,
+      talla: document.getElementById('antro-f-talla').value,
+      pct_grasa: document.getElementById('antro-f-grasa').value,
+      pct_musculo: document.getElementById('antro-f-musculo').value,
+      somatotipo: document.getElementById('antro-f-somato').value,
+      obs: document.getElementById('antro-f-obs').value
+    });
+  } else {
+    reg.laboratorio.unshift({
+      fecha: document.getElementById('antro-f-fecha').value,
+      hemoglobina: document.getElementById('antro-f-hb').value,
+      ferritina: document.getElementById('antro-f-ferritina').value,
+      vitamina_d: document.getElementById('antro-f-vitd').value,
+      calcio: document.getElementById('antro-f-calcio').value,
+      ck_total: document.getElementById('antro-f-ck').value,
+      valores_alterados: document.getElementById('antro-f-alt').value
+    });
+  }
+
+  saveData();
+  // Sincroniza de inmediato con Sheets, igual que en Tiempos, para que un
+  // refresh justo después de guardar no revierta el dato recién ingresado.
+  try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+
+  toast('✓ Guardado correctamente');
+  antroDescartar();
+  antroMostrarHistorial();
+
+  if(btn){ btn.disabled = false; btn.textContent = btnTxt || '✓ Confirmar y Guardar'; }
+}
+
+function antroDescartar() {
+  _antroExtraido = null;
+  document.getElementById('antro-resultado').style.display = 'none';
+  document.getElementById('antro-preview').innerHTML = '';
+  document.getElementById('antro-upload-card').style.display = 'block';
+  document.getElementById('antro-pdf-input').value = '';
+  document.getElementById('antro-pdf-nombre').textContent = '';
+}
+
+function antroMostrarHistorial() {
+  var wrap = document.getElementById('antro-historial-wrap');
+  if(!_antroDepId) { wrap.style.display = 'none'; return; }
+
+  var reg = ANTROPOMETRIA[_antroDepId] || ANTROPOMETRIA[String(_antroDepId)];
+  var meds = (reg && reg.mediciones) || [];
+  var labs = (reg && reg.laboratorio) || [];
+
+  if(!meds.length && !labs.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  var medsEl = document.getElementById('antro-hist-mediciones');
+  medsEl.innerHTML = !meds.length
+    ? '<div class="empty" style="padding:1rem">Sin mediciones registradas</div>'
+    : meds.map(function(m){
+        return '<div class="card" style="margin-bottom:.5rem;padding:.75rem .9rem">'
+          + '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.3rem">'+m.fecha+'</div>'
+          + '<div style="font-size:.78rem;color:var(--t1)">Peso: <b>'+m.peso+'kg</b> · Talla: <b>'+(m.talla||'—')+'cm</b> · Grasa: <b>'+m.pct_grasa+'%</b> · Músculo: <b>'+m.pct_musculo+'%</b></div>'
+          + (m.obs ? '<div style="font-size:.7rem;color:var(--t3);margin-top:.3rem;font-style:italic">'+m.obs+'</div>' : '')
+          + '</div>';
+      }).join('');
+
+  var labEl = document.getElementById('antro-hist-lab');
+  labEl.innerHTML = !labs.length
+    ? '<div class="empty" style="padding:1rem">Sin exámenes registrados</div>'
+    : labs.map(function(l){
+        return '<div class="card" style="margin-bottom:.5rem;padding:.75rem .9rem">'
+          + '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.3rem">'+l.fecha+'</div>'
+          + '<div style="font-size:.78rem;color:var(--t1);line-height:1.7">'
+          + (l.hemoglobina ? 'Hemoglobina: <b>'+l.hemoglobina+'</b><br>' : '')
+          + (l.ferritina ? 'Ferritina: <b>'+l.ferritina+'</b><br>' : '')
+          + (l.vitamina_d ? 'Vitamina D: <b>'+l.vitamina_d+'</b><br>' : '')
+          + (l.calcio ? 'Calcio: <b>'+l.calcio+'</b><br>' : '')
+          + (l.ck_total ? 'CK Total: <b>'+l.ck_total+'</b><br>' : '')
+          + '</div>'
+          + (l.valores_alterados ? '<div style="font-size:.7rem;color:var(--orange);margin-top:.3rem">⚠ '+l.valores_alterados+'</div>' : '')
+          + '</div>';
+      }).join('');
+}
+
+function switchAntroHistTab(tipo, btn) {
+  document.querySelectorAll('#antro-historial-wrap .tabs .tab').forEach(function(b){ b.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
+  document.getElementById('antro-hist-mediciones').style.display = tipo==='mediciones' ? 'block' : 'none';
+  document.getElementById('antro-hist-lab').style.display = tipo==='lab' ? 'block' : 'none';
+}
+
 
 function mostrarMejoresTiempos(id) {
   var el = document.getElementById('mo-dep-tiempos-badges');
