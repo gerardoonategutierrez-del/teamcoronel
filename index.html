@@ -486,6 +486,19 @@ function closeLightbox(){
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape")closeLightbox();});
 loadContent();
+
+// Registro silencioso de visitas (solo se ve en el panel admin)
+(function registrarVisita(){
+  try{
+    var ahora=new Date();
+    var fecha=(ahora.getDate()<10?"0":"")+ahora.getDate()+"/"+(ahora.getMonth()<9?"0":"")+(ahora.getMonth()+1)+"/"+ahora.getFullYear();
+    var hora=ahora.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
+    var pagina=(location.pathname.split("/").pop()||"index.html");
+    var row=[fecha,hora,pagina];
+    fetch(SH+"?action=append&sheet=landing_visitas&row="+encodeURIComponent(JSON.stringify(row))).catch(function(){});
+  }catch(e){}
+})();
+
 </script>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
