@@ -1325,7 +1325,7 @@ function saveData() {
   _saveDataCore();
   // Debounce sync to Google Sheets
   if(window._syncTimer) clearTimeout(window._syncTimer);
-  window._syncTimer = setTimeout(function(){ syncToSheets(); }, 1500);
+  window._syncTimer = setTimeout(function(){ syncToSheets(); }, 600);
 }
 
 function loadData() {
@@ -1349,15 +1349,13 @@ function loadData() {
       Object.keys(d.athletesExtra).forEach(function(strId) {
         var saved = d.athletesExtra[strId];
         var numId = parseInt(strId); // ensure numeric key matches var declaration
-        // Deep copy historial so each athlete has a fully independent array
+        // Deep copy historial so each athlete has a fully independent array,
+        // preservando TODOS los campos de cada entrada (fecha, tipo, nota,
+        // tiempo, tipoControl, _tid, etc.) y no solo un subconjunto fijo.
         var histCopy = [];
         if(Array.isArray(saved.historial)) {
           saved.historial.forEach(function(h) {
-            histCopy.push({
-              fecha: h.fecha || '',
-              tipo:  h.tipo  || 'obs',
-              nota:  h.nota  || ''
-            });
+            histCopy.push(Object.assign({}, h));
           });
         }
         // Write with BOTH numeric and string key to cover all access patterns
@@ -1962,18 +1960,10 @@ function ptMostrarGrafico() {
   var nombreEl = document.getElementById('pt-grafico-nombre');
   if(nombreEl && a) nombreEl.textContent = a.ap+' '+a.nm;
 
-  // Group by tipoControl
-  var lanzados = hist.filter(function(h){ return !h.tipoControl || h.tipoControl==='lanzado'; });
-  var parados  = hist.filter(function(h){ return h.tipoControl==='parado'; });
-
-  // Build chart with lanzados (main)
+  // Build one independent chart per test type (Lanzado / Detenido / 100mt)
   var grafEl = document.getElementById('pt-grafico');
   if(grafEl) {
-    if(lanzados.length >= 2) {
-      grafEl.innerHTML = buildTiemposChart(lanzados, parados);
-    } else {
-      grafEl.innerHTML = '<div style="font-size:.7rem;color:var(--t3);padding:.5rem 0">Registra 2 o más tiempos para ver el gráfico.</div>';
-    }
+    grafEl.innerHTML = buildTiemposChartsPorTipo(hist);
   }
 
   // Table
@@ -2008,26 +1998,29 @@ function ptMostrarGrafico() {
   }
 }
 
-function buildTiemposChart(lanzados, parados) {
-  // Sort by date ascending before charting
-  function parseFechaCh(f) {
-    var p=(f||'').split('/');
-    return p.length===3 ? new Date(p[2],p[1]-1,p[0]).getTime() : 0;
-  }
-  lanzados = (lanzados||[]).slice().sort(function(a,b){ return parseFechaCh(a.fecha)-parseFechaCh(b.fecha); });
-  parados  = (parados||[]).slice().sort(function(a,b){ return parseFechaCh(a.fecha)-parseFechaCh(b.fecha); });
+// Sort by date ascending before charting
+function parseFechaCh(f) {
+  var p=(f||'').split('/');
+  return p.length===3 ? new Date(p[2],p[1]-1,p[0]).getTime() : 0;
+}
+
+function getTiempo(h) {
+  if(h.tiempo && !isNaN(parseFloat(h.tiempo))) return parseFloat(h.tiempo);
+  var m = (h.nota||'').match(/([\d]+[.,][\d]+)"/);
+  return m ? parseFloat(m[1].replace(',','.')) : null;
+}
+
+// Construye UN gráfico de una sola serie (un solo tipo de prueba).
+// color: color hex de la línea. label: texto que aparece arriba a la izquierda.
+function buildTiemposChart(datos, color, label) {
+  datos = (datos||[]).slice().sort(function(a,b){ return parseFechaCh(a.fecha)-parseFechaCh(b.fecha); });
+  datos = datos.filter(function(h){ return getTiempo(h) !== null; });
+  if(datos.length < 2) return '<div style="font-size:.7rem;color:var(--t3);padding:.5rem 0">Registra al menos 2 tiempos v\u00e1lidos para ver el gr\u00e1fico.</div>';
 
   var W=520, H=180, pad={t:25,r:25,b:40,l:48};
   var iw = W-pad.l-pad.r, ih = H-pad.t-pad.b;
 
-  function getTiempo(h) {
-    if(h.tiempo && !isNaN(parseFloat(h.tiempo))) return parseFloat(h.tiempo);
-    var m = (h.nota||'').match(/([\d]+[.,][\d]+)"/);
-    return m ? parseFloat(m[1].replace(',','.')) : null;
-  }
-  lanzados = lanzados.filter(function(h){ return getTiempo(h) !== null; });
-  if(lanzados.length < 2) return '<div style="font-size:.7rem;color:var(--t3);padding:.5rem 0">Registra al menos 2 tiempos v\u00e1lidos para ver el gr\u00e1fico.</div>';
-  var tiempos = lanzados.map(function(h){ return getTiempo(h); });
+  var tiempos = datos.map(function(h){ return getTiempo(h); });
   var rawMin  = Math.min.apply(null,tiempos);
   var rawMax  = Math.max.apply(null,tiempos);
   var avg     = tiempos.reduce(function(a,b){return a+b;},0)/tiempos.length;
@@ -2050,42 +2043,70 @@ function buildTiemposChart(lanzados, parados) {
       +'<text x="'+(pad.l-4)+'" y="'+(gy+4)+'" font-size="9" fill="rgba(156,163,175,.7)" text-anchor="end">'+gv.toFixed(1)+'</text>';
   }
 
-  // Line lanzados
-  var pts = lanzados.map(function(h,i){ return xp(i,lanzados.length)+','+yp(getTiempo(h)); }).join(' ');
-  var line = '<polyline points="'+pts+'" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  // Line
+  var pts = datos.map(function(h,i){ return xp(i,datos.length)+','+yp(getTiempo(h)); }).join(' ');
+  var line = '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
 
   // Area fill
-  var areapts = 'M'+xp(0,lanzados.length)+','+yp(lanzados[0].tiempo)
+  var areapts = 'M'+xp(0,datos.length)+','+yp(getTiempo(datos[0]))
     +' '+pts
-    +' L'+xp(lanzados.length-1,lanzados.length)+','+(pad.t+ih)
+    +' L'+xp(datos.length-1,datos.length)+','+(pad.t+ih)
     +' L'+pad.l+','+(pad.t+ih)+' Z';
-  var area = '<path d="'+areapts+'" fill="rgba(59,130,246,.08)"/>';
+  var area = '<path d="'+areapts+'" fill="'+color+'" fill-opacity=".08"/>';
 
   // Dots + labels
-  var dots = lanzados.map(function(h,i){
-    var t=getTiempo(h), x=xp(i,lanzados.length), y=yp(t);
+  var dots = datos.map(function(h,i){
+    var t=getTiempo(h), x=xp(i,datos.length), y=yp(t);
     var fecha=h.fecha.split('/').slice(0,2).join('/');
-    return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="#3b82f6" stroke="var(--bg)" stroke-width="1.5"/>'
-      +'<text x="'+x+'" y="'+(y-8)+'" font-size="8.5" fill="#93c5fd" text-anchor="middle">'+t.toFixed(2)+'"</text>'
+    return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+color+'" stroke="var(--bg)" stroke-width="1.5"/>'
+      +'<text x="'+x+'" y="'+(y-8)+'" font-size="8.5" fill="'+color+'" text-anchor="middle">'+t.toFixed(2)+'"</text>'
       +'<text x="'+x+'" y="'+(H-6)+'" font-size="7.5" fill="rgba(107,114,128,.8)" text-anchor="middle">'+fecha+'</text>';
   }).join('');
 
   // Trend arrow
   var trend='';
-  if(lanzados.length>=2){
-    var first=getTiempo(lanzados[0]), last=getTiempo(lanzados[lanzados.length-1]);
-    var diff=(last-first).toFixed(2);
-    var color=last<first?'#22c55e':'#ef4444';
-    var symbol=last<first?'▼ ':'▲ ';
-    trend='<text x="'+(W-pad.r)+'" y="14" font-size="9" fill="'+color+'" text-anchor="end">'+symbol+Math.abs(diff)+'"</text>';
-  }
+  var first=getTiempo(datos[0]), last=getTiempo(datos[datos.length-1]);
+  var diff=(last-first).toFixed(2);
+  var tcolor=last<first?'#22c55e':'#ef4444';
+  var symbol=last<first?'▼ ':'▲ ';
+  trend='<text x="'+(W-pad.r)+'" y="14" font-size="9" fill="'+tcolor+'" text-anchor="end">'+symbol+Math.abs(diff)+'"</text>';
 
   return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">'
     +'<rect width="'+W+'" height="'+H+'" fill="transparent"/>'
     +grid+area+line+dots+trend
-    +'<text x="'+pad.l+'" y="14" font-size="8.5" fill="#3b82f6">● 200mt Lanzado</text>'
+    +'<text x="'+pad.l+'" y="14" font-size="8.5" fill="'+color+'">● '+label+'</text>'
     +'</svg>';
 }
+
+// Agrupa el historial por tipo de prueba y arma un gráfico independiente
+// para cada uno (Lanzado, Detenido, 100mt) — solo se muestran los tipos
+// que tengan al menos 2 registros válidos.
+var GRUPOS_TIPO = [
+  {match:function(h){ return !h.tipoControl||h.tipoControl==='lanzado'; }, color:'#3b82f6', label:'200mt Lanzado'},
+  {match:function(h){ return h.tipoControl==='parado'; },                  color:'#f59e0b', label:'200mt Detenido'},
+  {match:function(h){ return h.tipoControl==='100m'; },                    color:'#22c55e', label:'100mt'}
+];
+
+function buildTiemposChartsPorTipo(hist) {
+  var bloques = '';
+  GRUPOS_TIPO.forEach(function(grupo){
+    var datos = (hist||[]).filter(grupo.match).filter(function(h){ return getTiempo(h)!==null; });
+    if(datos.length >= 2) {
+      bloques += '<div style="margin-bottom:1.1rem">'
+        + '<div style="font-size:.68rem;font-weight:700;color:var(--t3);margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">'+grupo.label+'</div>'
+        + buildTiemposChart(datos, grupo.color, grupo.label)
+        + '</div>';
+    } else if(datos.length === 1) {
+      bloques += '<div style="margin-bottom:1.1rem">'
+        + '<div style="font-size:.68rem;font-weight:700;color:var(--t3);margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">'+grupo.label+'</div>'
+        + '<div style="font-size:.7rem;color:var(--t3);padding:.4rem 0">Solo hay 1 registro (' + getTiempo(datos[0]).toFixed(2) + '"). Registra otro para ver la evolución.</div>'
+        + '</div>';
+    }
+  });
+  if(!bloques) bloques = '<div style="font-size:.7rem;color:var(--t3);padding:.5rem 0">Registra al menos 2 tiempos del mismo tipo para ver un gráfico.</div>';
+  return bloques;
+}
+
 
 function ptMostrarRecientes(){
   var el=document.getElementById('pt-ultimos');
@@ -3011,22 +3032,9 @@ function mostrarTiemposModal(id) {
     return p.length===3 ? new Date(p[2],p[1]-1,p[0]).getTime() : 0;
   }
 
-  // Split by type and sort by date ascending
-  var lanzados = hist.filter(function(h){ return !h.tipoControl||h.tipoControl==='lanzado'; })
-    .sort(function(a,b){ return parseFecha(a.fecha)-parseFecha(b.fecha); });
-  var parados  = hist.filter(function(h){ return h.tipoControl==='parado'; })
-    .sort(function(a,b){ return parseFecha(a.fecha)-parseFecha(b.fecha); });
-
   var grafEl = document.getElementById('modal-tiempos-grafico');
   if(grafEl) {
-    if(lanzados.length >= 2) {
-      grafEl.innerHTML = buildTiemposChart(lanzados, parados);
-    } else if(lanzados.length === 1) {
-      grafEl.innerHTML = '<div style="background:var(--bg);border-radius:8px;padding:.6rem .85rem;display:flex;justify-content:space-between;align-items:center">'
-        +'<div style="font-size:.72rem;color:var(--t2)">200mt Lanzado · '+lanzados[0].fecha+'</div>'
-        +'<div style="font-size:1.2rem;font-weight:700;color:var(--blue-lt)">'+lanzados[0].tiempo+'"</div>'
-        +'</div><div style="font-size:.65rem;color:var(--t4);margin-top:.3rem">Registra más tiempos para ver el gráfico de evolución.</div>';
-    }
+    grafEl.innerHTML = buildTiemposChartsPorTipo(hist);
   }
 
   // Table - last 8 records
