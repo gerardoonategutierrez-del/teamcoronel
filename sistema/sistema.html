@@ -3617,8 +3617,13 @@ function antroMostrarPreview(lista) {
   var fechaDefault = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
 
   var tituloCant = lista.length > 1
-    ? '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.75rem">Se encontraron <b>'+lista.length+' controles</b> en el PDF — revisa cada uno antes de guardar.</div>'
-    : '';
+    ? '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.75rem">Se encontraron <b>'+lista.length+' controles</b> en el PDF — revisa que se hayan leído bien antes de guardar. Los datos no se pueden editar aquí, ya que corresponden al informe original del nutricionista.</div>'
+    : '<div style="font-size:.68rem;color:var(--t3);margin-bottom:.75rem">Los datos no se pueden editar aquí, ya que corresponden al informe original del nutricionista.</div>';
+
+  function campo(label, valor) {
+    return '<div class="fg"><label class="fl">'+label+'</label>'
+      + '<div class="fi" style="background:var(--bg);cursor:default;color:var(--t2)">'+(valor||'—')+'</div></div>';
+  }
 
   var bloques = lista.map(function(d, i){
     var encabezado = lista.length > 1
@@ -3627,23 +3632,17 @@ function antroMostrarPreview(lista) {
 
     if(_antroTipoUpload === 'antro') {
       return encabezado
-        + '<div class="fi-row"><div class="fg"><label class="fl">Fecha</label><input class="fi" id="antro-f-fecha-'+i+'" value="'+(d.fecha||fechaDefault)+'"></div>'
-        +   '<div class="fg"><label class="fl">Peso (kg)</label><input class="fi" id="antro-f-peso-'+i+'" value="'+(d.peso||'')+'"></div></div>'
-        + '<div class="fi-row"><div class="fg"><label class="fl">Talla (cm)</label><input class="fi" id="antro-f-talla-'+i+'" value="'+(d.talla||'')+'"></div>'
-        +   '<div class="fg"><label class="fl">% Grasa</label><input class="fi" id="antro-f-grasa-'+i+'" value="'+(d.pct_grasa||'')+'"></div></div>'
-        + '<div class="fi-row"><div class="fg"><label class="fl">% Músculo</label><input class="fi" id="antro-f-musculo-'+i+'" value="'+(d.pct_musculo||'')+'"></div>'
-        +   '<div class="fg"><label class="fl">Somatotipo</label><input class="fi" id="antro-f-somato-'+i+'" value="'+(d.somatotipo||'')+'"></div></div>'
-        + '<div class="fg"><label class="fl">Observación</label><input class="fi" id="antro-f-obs-'+i+'" value="'+(d.obs||'')+'"></div>'
+        + '<div class="fi-row">'+campo('Fecha', d.fecha||fechaDefault)+campo('Peso (kg)', d.peso)+'</div>'
+        + '<div class="fi-row">'+campo('Talla (cm)', d.talla)+campo('% Grasa', d.pct_grasa)+'</div>'
+        + '<div class="fi-row">'+campo('% Músculo', d.pct_musculo)+campo('Somatotipo', d.somatotipo)+'</div>'
+        + campo('Observación', d.obs)
         + (lista.length > 1 && i < lista.length-1 ? '<hr class="divider">' : '');
     } else {
       return encabezado
-        + '<div class="fi-row"><div class="fg"><label class="fl">Fecha</label><input class="fi" id="antro-f-fecha-'+i+'" value="'+(d.fecha||fechaDefault)+'"></div>'
-        +   '<div class="fg"><label class="fl">Hemoglobina</label><input class="fi" id="antro-f-hb-'+i+'" value="'+(d.hemoglobina||'')+'"></div></div>'
-        + '<div class="fi-row"><div class="fg"><label class="fl">Ferritina</label><input class="fi" id="antro-f-ferritina-'+i+'" value="'+(d.ferritina||'')+'"></div>'
-        +   '<div class="fg"><label class="fl">Vitamina D</label><input class="fi" id="antro-f-vitd-'+i+'" value="'+(d.vitamina_d||'')+'"></div></div>'
-        + '<div class="fi-row"><div class="fg"><label class="fl">Calcio</label><input class="fi" id="antro-f-calcio-'+i+'" value="'+(d.calcio||'')+'"></div>'
-        +   '<div class="fg"><label class="fl">CK Total</label><input class="fi" id="antro-f-ck-'+i+'" value="'+(d.ck_total||'')+'"></div></div>'
-        + '<div class="fg"><label class="fl">Valores alterados</label><input class="fi" id="antro-f-alt-'+i+'" value="'+(d.valores_alterados||'')+'"></div>'
+        + '<div class="fi-row">'+campo('Fecha', d.fecha||fechaDefault)+campo('Hemoglobina', d.hemoglobina)+'</div>'
+        + '<div class="fi-row">'+campo('Ferritina', d.ferritina)+campo('Vitamina D', d.vitamina_d)+'</div>'
+        + '<div class="fi-row">'+campo('Calcio', d.calcio)+campo('CK Total', d.ck_total)+'</div>'
+        + campo('Valores alterados', d.valores_alterados)
         + (lista.length > 1 && i < lista.length-1 ? '<hr class="divider">' : '');
     }
   }).join('');
@@ -3668,27 +3667,23 @@ async function antroConfirmar() {
   var btnTxt = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-  var cantidad = (_antroExtraido || [{}]).length;
+  var cantidad = (_antroExtraido || []).length;
   for(var i=0; i<cantidad; i++){
+    var d = _antroExtraido[i];
+    var nuevoId = 'a_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,8);
     if(_antroTipoUpload === 'antro') {
       reg.mediciones.unshift({
-        fecha: document.getElementById('antro-f-fecha-'+i).value,
-        peso: document.getElementById('antro-f-peso-'+i).value,
-        talla: document.getElementById('antro-f-talla-'+i).value,
-        pct_grasa: document.getElementById('antro-f-grasa-'+i).value,
-        pct_musculo: document.getElementById('antro-f-musculo-'+i).value,
-        somatotipo: document.getElementById('antro-f-somato-'+i).value,
-        obs: document.getElementById('antro-f-obs-'+i).value
+        _aid: nuevoId,
+        fecha: d.fecha, peso: d.peso, talla: d.talla,
+        pct_grasa: d.pct_grasa, pct_musculo: d.pct_musculo,
+        somatotipo: d.somatotipo, obs: d.obs
       });
     } else {
       reg.laboratorio.unshift({
-        fecha: document.getElementById('antro-f-fecha-'+i).value,
-        hemoglobina: document.getElementById('antro-f-hb-'+i).value,
-        ferritina: document.getElementById('antro-f-ferritina-'+i).value,
-        vitamina_d: document.getElementById('antro-f-vitd-'+i).value,
-        calcio: document.getElementById('antro-f-calcio-'+i).value,
-        ck_total: document.getElementById('antro-f-ck-'+i).value,
-        valores_alterados: document.getElementById('antro-f-alt-'+i).value
+        _aid: nuevoId,
+        fecha: d.fecha, hemoglobina: d.hemoglobina, ferritina: d.ferritina,
+        vitamina_d: d.vitamina_d, calcio: d.calcio, ck_total: d.ck_total,
+        valores_alterados: d.valores_alterados
       });
     }
   }
@@ -3725,6 +3720,13 @@ function antroMostrarHistorial() {
   if(!meds.length && !labs.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
 
+  // Asigna un identificador único a registros antiguos que no lo tengan
+  // (cargados antes de esta actualización), para poder eliminarlos.
+  var huboCambio = false;
+  meds.forEach(function(m){ if(!m._aid){ m._aid = 'a_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); huboCambio = true; } });
+  labs.forEach(function(l){ if(!l._aid){ l._aid = 'a_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); huboCambio = true; } });
+  if(huboCambio) saveData();
+
   var medsEl = document.getElementById('antro-hist-mediciones');
   var graficoHtml = '';
   if(meds.length > 1) {
@@ -3741,7 +3743,12 @@ function antroMostrarHistorial() {
     ? '<div class="empty" style="padding:1rem">Sin mediciones registradas</div>'
     : meds.map(function(m){
         return '<div class="card" style="margin-bottom:.5rem;padding:.75rem .9rem">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
           + '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.3rem">'+m.fecha+'</div>'
+          + '<button onclick="eliminarMedicion('+_antroDepId+',\''+m._aid+'\')" '
+          + 'style="background:none;border:1px solid rgba(239,68,68,.35);border-radius:4px;'
+          + 'color:var(--red);cursor:pointer;font-size:.65rem;padding:.1rem .4rem;flex-shrink:0" title="Eliminar">✕</button>'
+          + '</div>'
           + '<div style="font-size:.78rem;color:var(--t1)">Peso: <b>'+m.peso+'kg</b> · Talla: <b>'+(m.talla||'—')+'cm</b> · Grasa: <b>'+m.pct_grasa+'%</b> · Músculo: <b>'+m.pct_musculo+'%</b></div>'
           + (m.obs ? '<div style="font-size:.7rem;color:var(--t3);margin-top:.3rem;font-style:italic">'+m.obs+'</div>' : '')
           + '</div>';
@@ -3752,7 +3759,12 @@ function antroMostrarHistorial() {
     ? '<div class="empty" style="padding:1rem">Sin exámenes registrados</div>'
     : labs.map(function(l){
         return '<div class="card" style="margin-bottom:.5rem;padding:.75rem .9rem">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
           + '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.3rem">'+l.fecha+'</div>'
+          + '<button onclick="eliminarLaboratorio('+_antroDepId+',\''+l._aid+'\')" '
+          + 'style="background:none;border:1px solid rgba(239,68,68,.35);border-radius:4px;'
+          + 'color:var(--red);cursor:pointer;font-size:.65rem;padding:.1rem .4rem;flex-shrink:0" title="Eliminar">✕</button>'
+          + '</div>'
           + '<div style="font-size:.78rem;color:var(--t1);line-height:1.7">'
           + (l.hemoglobina ? 'Hemoglobina: <b>'+l.hemoglobina+'</b><br>' : '')
           + (l.ferritina ? 'Ferritina: <b>'+l.ferritina+'</b><br>' : '')
@@ -3763,6 +3775,40 @@ function antroMostrarHistorial() {
           + (l.valores_alterados ? '<div style="font-size:.7rem;color:var(--orange);margin-top:.3rem">⚠ '+l.valores_alterados+'</div>' : '')
           + '</div>';
       }).join('');
+}
+
+async function eliminarMedicion(depId, aid) {
+  if(!confirm('¿Eliminar este control antropométrico? Esta acción no se puede deshacer.')) return;
+  var reg = ANTROPOMETRIA[depId] || ANTROPOMETRIA[String(depId)];
+  if(!reg || !Array.isArray(reg.mediciones)) return;
+  var idx = reg.mediciones.findIndex(function(m){ return m._aid===aid; });
+  if(idx===-1){ toast('No se encontró el registro','err'); return; }
+  reg.mediciones.splice(idx,1);
+  ANTROPOMETRIA[depId] = reg;
+  ANTROPOMETRIA[String(depId)] = reg;
+
+  saveData();
+  try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+
+  antroMostrarHistorial();
+  toast('Control eliminado ✓');
+}
+
+async function eliminarLaboratorio(depId, aid) {
+  if(!confirm('¿Eliminar este examen de laboratorio? Esta acción no se puede deshacer.')) return;
+  var reg = ANTROPOMETRIA[depId] || ANTROPOMETRIA[String(depId)];
+  if(!reg || !Array.isArray(reg.laboratorio)) return;
+  var idx = reg.laboratorio.findIndex(function(l){ return l._aid===aid; });
+  if(idx===-1){ toast('No se encontró el registro','err'); return; }
+  reg.laboratorio.splice(idx,1);
+  ANTROPOMETRIA[depId] = reg;
+  ANTROPOMETRIA[String(depId)] = reg;
+
+  saveData();
+  try { await syncToSheets(); } catch(e) { console.warn('sync inmediato falló', e); }
+
+  antroMostrarHistorial();
+  toast('Examen eliminado ✓');
 }
 
 function switchAntroHistTab(tipo, btn) {
