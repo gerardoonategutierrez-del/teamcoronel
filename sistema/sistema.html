@@ -3108,7 +3108,7 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '.page {max-width:780px;margin:0 auto;padding:32px}'
     + '.header {display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1d4ed8;padding-bottom:16px;margin-bottom:20px}'
     + '.header-left {display:flex;align-items:center;gap:14px}'
-    + '.logo {width:64px;height:64px;object-fit:contain}'
+    + '.logo {display:block;width:64px!important;height:64px!important;max-width:64px;max-height:64px;object-fit:contain}'
     + '.club-name {font-size:22px;font-weight:900;letter-spacing:3px;color:#1d4ed8;line-height:1}'
     + '.club-sub {font-size:9px;color:#6b7280;letter-spacing:2px;text-transform:uppercase;margin-top:2px}'
     + '.doc-info {text-align:right;font-size:10px;color:#6b7280}'
@@ -3140,7 +3140,7 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '<title>Ficha - '+a.ap+' '+a.nm+'</title>'
     + '<style>'+css+'</style></head><body><div class="page">'
     + '<div class="header"><div class="header-left">'
-    + '<img class="logo" src="data:image/png;base64,'+_CERT_LOGO_FICHA+'" alt="TC">'
+    + '<img class="logo" width="64" height="64" src="data:image/png;base64,'+_CERT_LOGO_FICHA+'" alt="TC">'
     + '<div><div class="club-name">TEAM CORONEL</div>'
     + '<div class="club-sub">Patín Carrera · Coronel · Biobío · Chile</div></div></div>'
     + '<div class="doc-info"><div><b>Ficha del Deportista</b></div><div>Temporada 2026</div>'
@@ -3673,7 +3673,97 @@ function _analizarAntro(mediciones) {
   return '<div class="analisis-box"><b>Análisis</b>'+texto+'</div>';
 }
 
-function descargarFicha(id) {
+// Convierte un elemento <svg> (de los gráficos) en una imagen PNG, dibujándolo
+// sobre un canvas con fondo blanco — así se puede insertar en el PDF con
+// jsPDF sin depender de "fotografiar" el HTML.
+function _svgElementToDataURL(svgEl) {
+  return new Promise(function(resolve, reject) {
+    var vb = (svgEl.getAttribute('viewBox')||'0 0 520 180').split(' ').map(Number);
+    var w = vb[2] || 520, h = vb[3] || 180;
+    var serializer = new XMLSerializer();
+    var svgStr = serializer.serializeToString(svgEl);
+    var svgBlob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function(){
+      var scale = 3;
+      var canvas = document.createElement('canvas');
+      canvas.width = w*scale; canvas.height = h*scale;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0,0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve({dataUrl: canvas.toDataURL('image/png'), w:w, h:h});
+    };
+    img.onerror = function(e){ URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+// Extrae cada bloque {etiqueta, elementoSVG} del HTML que arma
+// buildTiemposChartsPorTipo (un gráfico por tipo de control).
+function _extraerGraficosTiempos(hist) {
+  var wrapper = document.createElement('div');
+  wrapper.innerHTML = buildTiemposChartsPorTipo(hist);
+  var resultados = [];
+  wrapper.querySelectorAll(':scope > div').forEach(function(bloque){
+    var labelEl = bloque.querySelector('div');
+    var svgEl = bloque.querySelector('svg');
+    if(svgEl) resultados.push({ label: labelEl ? labelEl.textContent : '', svg: svgEl });
+  });
+  return resultados;
+}
+
+// Si no queda suficiente espacio en la página actual, agrega una nueva.
+function _asegurarEspacio(doc, y, necesario, pageH, marginTop) {
+  if (y + necesario > pageH - 55) { doc.addPage(); return marginTop; }
+  return y;
+}
+
+// Convierte el HTML del cuadro de análisis (generado por _analizarTiempos /
+// _analizarAntro) a texto plano, línea por línea.
+function _analisisALineas(htmlAnalisis) {
+  if (!htmlAnalisis) return [];
+  var txt = htmlAnalisis
+    .replace(/<b>.*?<\/b>/i, '')
+    .replace(/<div class="analisis-box">/i, '')
+    .replace(/<\/div>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n');
+  return txt.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+}
+
+// Dibuja el cuadro verde de "Análisis" con el texto ya separado en líneas.
+function _pintarBoxAnalisis(doc, lineas, x, y, anchoMax, pageH, marginTop) {
+  if (!lineas.length) return y;
+  var textoAncho = anchoMax - 20;
+  var todasLasLineas = [];
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  lineas.forEach(function(l){
+    doc.splitTextToSize(l, textoAncho).forEach(function(sub){ todasLasLineas.push(sub); });
+  });
+  var alto = 16 + todasLasLineas.length*12 + 6;
+  y = _asegurarEspacio(doc, y, alto, pageH, marginTop);
+  doc.setFillColor(240,253,244); doc.setDrawColor(187,247,208);
+  doc.roundedRect(x, y, anchoMax, alto, 4, 4, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(21,128,61);
+  doc.text('AN\u00c1LISIS', x+10, y+13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(22,101,52);
+  var ly = y+27;
+  todasLasLineas.forEach(function(l){ doc.text(l, x+10, ly); ly += 12; });
+  doc.setTextColor(0,0,0);
+  return y + alto + 10;
+}
+
+// Escribe un párrafo normal (sin negrita) ajustado al ancho disponible.
+function _pintarParrafo(doc, texto, x, y, anchoMax, interlineado, tamano) {
+  doc.setFont('helvetica','normal'); doc.setFontSize(tamano);
+  var lineas = doc.splitTextToSize(texto, anchoMax);
+  lineas.forEach(function(linea){ doc.text(linea, x, y); y += interlineado; });
+  return y;
+}
+
+async function descargarFicha(id) {
   var a = ATHLETES.find(function(x){ return x.id===id; });
   if(!a) return;
   var ex          = athletesExtra[id] || athletesExtra[String(id)] || {};
@@ -3683,58 +3773,203 @@ function descargarFicha(id) {
   var hoy   = new Date();
   var fd    = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
 
-  // Grab SVGs directly from modal DOM
-  var tGraf = document.getElementById('modal-tiempos-grafico');
-  var tHTML = '';
-  if(tGraf && tGraf.innerHTML.trim()) {
-    tHTML = '<div class="section"><div class="section-title">Evolucion de Tiempos en Pista</div>'
-      +'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px">'+tGraf.innerHTML+'</div>'
-      +_analizarTiempos(histTiempos)+'</div>';
-  }
+  toast('Generando PDF...');
+  try {
+    var jsPDFClass = await _cargarJsPDFDirecto();
+    var doc = new jsPDFClass({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+    var pageW = 612, pageH = 792, marginX = 48, marginTop = 45, contentW = pageW - marginX*2;
+    var y = marginTop;
 
-  var aHTML = '';
-  if(antro && antro.mediciones && antro.mediciones.length) {
-    var ab = antro.obs_salud ? '<div class="alerta">'+antro.obs_salud+'</div>' : '';
-    var ag = document.getElementById('modal-antro-grafico');
-    var agInner = ag ? ag.innerHTML : '';
-    var mR = antro.mediciones.map(function(m){
-      return '<tr><td>'+m.fecha.split(' ')[0]+'</td><td>'+(m.talla||'')+'cm</td><td>'+m.peso+'kg</td><td>'+m.pct_grasa+'%</td><td>'+m.pct_musculo+'%</td></tr>';
-    }).join('');
-    aHTML = '<div class="section"><div class="section-title">Seguimiento Antropometrico</div>'
-      +ab+(agInner?'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:10px">'+agInner+'</div>':'')
-      +_analizarAntro(antro.mediciones)
-      +'<table><thead><tr><th>Fecha</th><th>Talla</th><th>Peso</th><th>% Grasa</th><th>% Musculo</th></tr></thead><tbody>'+mR+'</tbody></table>';
-    if(antro.laboratorio && antro.laboratorio.length) {
-      var lb = antro.laboratorio[0];
-      aHTML += '<div class="lab-box"><b>Examenes Lab. '+lb.fecha+'</b><br>'
-        +(lb.hemoglobina?'Hemoglobina: '+lb.hemoglobina+' &nbsp;':'')
-        +(lb.ferritina?'Ferritina: '+lb.ferritina+' &nbsp;':'')
-        +(lb.vitamina_d?'Vitamina D: <span style="color:#d97706">'+lb.vitamina_d+'</span>':'')
-        +'</div>';
+    // ── Encabezado ──
+    try { doc.addImage('data:image/png;base64,'+_CERT_LOGO_FICHA, 'PNG', marginX, y, 42, 42); } catch(e){}
+    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(29,78,216);
+    doc.text('TEAM CORONEL', marginX+52, y+16);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(107,114,128);
+    doc.text('PAT\u00cdN CARRERA \u00b7 CORONEL \u00b7 BIOB\u00cdO \u00b7 CHILE', marginX+52, y+27);
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(31,41,55);
+    doc.text('Ficha del Deportista', pageW-marginX, y+6, {align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,114,128);
+    doc.text('Temporada 2026', pageW-marginX, y+17, {align:'right'});
+    doc.text('Emisi\u00f3n: '+fd, pageW-marginX, y+28, {align:'right'});
+
+    y += 50;
+    doc.setDrawColor(29,78,216); doc.setLineWidth(1.3);
+    doc.line(marginX, y, pageW-marginX, y);
+    y += 22;
+
+    // ── Banner del deportista ──
+    var grupoMap  = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transici\u00f3n'};
+    var nivelMap  = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',intv:'Intermedio',intf:'Intermedio',form:'Intermedio'};
+    var bannerH = 62;
+    doc.setFillColor(29,58,138);
+    doc.roundedRect(marginX, y, contentW, bannerH, 6, 6, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(17);
+    doc.text((a.ap+' '+a.nm).toUpperCase(), marginX+16, y+24);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text('Nacimiento: '+(a.nac||'\u2014')+'   \u00b7   G\u00e9nero: '+(a.gen==='F'?'Femenino':'Masculino'), marginX+16, y+38);
+    var badges = [grupoMap[a.grupo]||a.grupo, nivelMap[a.grupo]||'', a.cat||''].filter(Boolean).join('   \u00b7   ');
+    doc.setFontSize(8);
+    doc.text(badges, marginX+16, y+52);
+    y += bannerH + 24;
+    doc.setTextColor(0,0,0);
+
+    // ── Sección Tiempos en Pista ──
+    if (histTiempos.length) {
+      var graficos = _extraerGraficosTiempos(histTiempos);
+      if (graficos.length) {
+        y = _asegurarEspacio(doc, y, 40, pageH, marginTop);
+        doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(29,78,216);
+        doc.text('EVOLUCI\u00d3N DE TIEMPOS EN PISTA', marginX, y);
+        y += 6;
+        doc.setDrawColor(219,234,254); doc.setLineWidth(0.7);
+        doc.line(marginX, y, pageW-marginX, y);
+        y += 16;
+
+        for (var i=0; i<graficos.length; i++) {
+          var g = graficos[i];
+          var vb = (g.svg.getAttribute('viewBox')||'0 0 520 180').split(' ').map(Number);
+          var relH = (vb[3]/vb[2]) * contentW;
+          y = _asegurarEspacio(doc, y, relH + 40, pageH, marginTop);
+          doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(55,65,81);
+          doc.text(g.label, marginX, y);
+          y += 10;
+          try {
+            var res = await _svgElementToDataURL(g.svg);
+            var finalH = contentW * (res.h/res.w);
+            doc.addImage(res.dataUrl, 'PNG', marginX, y, contentW, finalH);
+            y += finalH + 8;
+          } catch(e) { console.warn('No se pudo generar gr\u00e1fico de tiempos', e); }
+        }
+      }
+
+      var lineasTiempos = _analisisALineas(_analizarTiempos(histTiempos));
+      y = _pintarBoxAnalisis(doc, lineasTiempos, marginX, y, contentW, pageH, marginTop);
+      y += 14;
     }
-    aHTML += '</div>';
-  }
 
-  var oHTML = '';
-  var sObs = hist.filter(function(h){ return h.tipo !== 'control'; }).slice(0,3);
-  if(sObs.length) {
-    var oR = sObs.map(function(h){
+    // ── Sección Antropométrica ──
+    if (antro && antro.mediciones && antro.mediciones.length) {
+      y = _asegurarEspacio(doc, y, 40, pageH, marginTop);
+      doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(29,78,216);
+      doc.text('SEGUIMIENTO ANTROPOM\u00c9TRICO', marginX, y);
+      y += 6;
+      doc.setDrawColor(219,234,254); doc.setLineWidth(0.7);
+      doc.line(marginX, y, pageW-marginX, y);
+      y += 16;
+
+      if (antro.obs_salud) {
+        var obsLineas = doc.splitTextToSize(antro.obs_salud, contentW-16);
+        var alertaH = obsLineas.length*11 + 12;
+        y = _asegurarEspacio(doc, y, alertaH+10, pageH, marginTop);
+        doc.setFillColor(255,247,237); doc.setDrawColor(254,215,170);
+        doc.roundedRect(marginX, y, contentW, alertaH, 4, 4, 'FD');
+        doc.setTextColor(146,64,14); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+        doc.text(obsLineas, marginX+8, y+13);
+        y += alertaH + 10;
+        doc.setTextColor(0,0,0);
+      }
+
+      if (antro.mediciones.length > 1) {
+        var medsOrdenados = _ordenarMedsPorFecha(antro.mediciones);
+        try {
+          var wrapperAntro = document.createElement('div');
+          wrapperAntro.innerHTML = buildAntroChart(medsOrdenados);
+          var svgAntro = wrapperAntro.querySelector('svg');
+          if (svgAntro) {
+            var vbA = (svgAntro.getAttribute('viewBox')||'0 0 340 140').split(' ').map(Number);
+            var relHA = (vbA[3]/vbA[2]) * contentW;
+            y = _asegurarEspacio(doc, y, relHA + 15, pageH, marginTop);
+            var resA = await _svgElementToDataURL(svgAntro);
+            var finalHA = contentW * (resA.h/resA.w);
+            doc.addImage(resA.dataUrl, 'PNG', marginX, y, contentW, finalHA);
+            y += finalHA + 12;
+          }
+        } catch(e) { console.warn('No se pudo generar gr\u00e1fico antropom\u00e9trico', e); }
+      }
+
+      var lineasAntro = _analisisALineas(_analizarAntro(antro.mediciones));
+      y = _pintarBoxAnalisis(doc, lineasAntro, marginX, y, contentW, pageH, marginTop);
+      y += 8;
+
+      // Tabla de mediciones
+      y = _asegurarEspacio(doc, y, 30, pageH, marginTop);
+      var colX = [marginX, marginX+90, marginX+165, marginX+240, marginX+320];
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,64,175);
+      doc.text('FECHA', colX[0], y); doc.text('TALLA', colX[1], y); doc.text('PESO', colX[2], y);
+      doc.text('% GRASA', colX[3], y); doc.text('% M\u00daSCULO', colX[4], y);
+      y += 5;
+      doc.setDrawColor(230,230,230); doc.line(marginX, y, pageW-marginX, y);
+      y += 12;
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+      antro.mediciones.forEach(function(m){
+        y = _asegurarEspacio(doc, y, 16, pageH, marginTop);
+        doc.text(String(m.fecha||'').split(' ')[0], colX[0], y);
+        doc.text((m.talla||'')+'cm', colX[1], y);
+        doc.text((m.peso||'')+'kg', colX[2], y);
+        doc.text((m.pct_grasa||'')+'%', colX[3], y);
+        doc.text((m.pct_musculo||'')+'%', colX[4], y);
+        y += 15;
+      });
+
+      if (antro.laboratorio && antro.laboratorio.length) {
+        var lb = antro.laboratorio[0];
+        y += 6;
+        var labTexto = 'Ex\u00e1menes Lab. '+lb.fecha
+          + (lb.hemoglobina ? '  \u00b7  Hemoglobina: '+lb.hemoglobina : '')
+          + (lb.ferritina ? '  \u00b7  Ferritina: '+lb.ferritina : '')
+          + (lb.vitamina_d ? '  \u00b7  Vitamina D: '+lb.vitamina_d : '');
+        var labLineas = doc.splitTextToSize(labTexto, contentW-16);
+        var labH = labLineas.length*12 + 10;
+        y = _asegurarEspacio(doc, y, labH+10, pageH, marginTop);
+        doc.setFillColor(239,246,255);
+        doc.roundedRect(marginX, y, contentW, labH, 4, 4, 'F');
+        doc.setTextColor(30,64,175); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+        doc.text(labLineas, marginX+8, y+13);
+        y += labH + 10;
+        doc.setTextColor(0,0,0);
+      }
+      y += 12;
+    }
+
+    // ── Observaciones recientes ──
+    var sObs = hist.filter(function(h){ return h.tipo !== 'control'; }).slice(0,3).map(function(h){
       var nota = (h.nota||'');
       var nl = nota.indexOf('\n');
       var n  = nl>-1 ? nota.substring(nl+1) : nota;
-      n = n.split('\n\n')[0].trim().split('\n').slice(0,4).join('\n');
-      if(!n.trim()) return '';
-      return '<div class="obs-entry"><div class="obs-date">'+h.fecha+'</div>'
-        +'<div class="obs-text">'+n.replace(/\n/g,'<br>')+'</div></div>';
-    }).filter(Boolean).join('');
-    // Diagnostico del Coach no se incluye en ficha PDF
-  }
+      n = n.split('\n\n')[0].trim().split('\n').slice(0,4).join(' ');
+      return n.trim() ? { fecha:h.fecha, texto:n } : null;
+    }).filter(Boolean);
 
-  var html = _buildFichaHTML(a, tHTML, aHTML, oHTML, fd);
-  toast('Generando PDF...');
-  _generarYDescargarPDF(html, 'Ficha_'+a.ap.replace(/\s+/g,'_')+'_'+a.nm.replace(/\s+/g,'_')+'.pdf')
-    .then(function(){ toast('✓ Ficha descargada'); })
-    .catch(function(e){ toast('Error al generar el PDF, intenta de nuevo', 'err'); console.warn('Error PDF ficha:', e); });
+    if (sObs.length) {
+      y = _asegurarEspacio(doc, y, 40, pageH, marginTop);
+      doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(29,78,216);
+      doc.text('OBSERVACIONES RECIENTES', marginX, y);
+      y += 6;
+      doc.setDrawColor(219,234,254); doc.setLineWidth(0.7);
+      doc.line(marginX, y, pageW-marginX, y);
+      y += 16;
+
+      sObs.forEach(function(o){
+        y = _asegurarEspacio(doc, y, 34, pageH, marginTop);
+        doc.setDrawColor(59,130,246); doc.setLineWidth(2.2);
+        doc.line(marginX, y-9, marginX, y+18);
+        doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(107,114,128);
+        doc.text(o.fecha, marginX+10, y-2);
+        y += 9;
+        y = _pintarParrafo(doc, o.texto, marginX+10, y, contentW-14, 12, 9.5);
+        y += 8;
+      });
+    }
+
+    var nombreArchivo = 'Ficha_'+a.ap.replace(/\s+/g,'_')+'_'+a.nm.replace(/\s+/g,'_')+'.pdf';
+    doc.save(nombreArchivo);
+    toast('\u2713 Ficha descargada');
+  } catch(e) {
+    toast('Error al generar el PDF, intenta de nuevo', 'err');
+    console.warn('Error PDF ficha:', e);
+  }
 }
 
 
