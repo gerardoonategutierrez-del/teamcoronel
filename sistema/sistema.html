@@ -2910,7 +2910,11 @@ function mostrarAntro(id) {
   // ── Gráfico lineal SVG
   var grafEl = document.getElementById('modal-antro-grafico');
   if(grafEl && meds.length > 1) {
-    grafEl.innerHTML = buildAntroChart(meds);
+    // Las mediciones se guardan de más reciente a más antigua (o pueden
+    // llegar fuera de orden si se sube un informe viejo después); se
+    // ordenan por fecha real para que el gráfico siempre vaya de
+    // izquierda (más antigua) a derecha (más reciente).
+    grafEl.innerHTML = buildAntroChart(_ordenarMedsPorFecha(meds));
   } else if(grafEl) {
     grafEl.innerHTML = '<div style="font-size:.7rem;color:var(--t3);margin-bottom:.5rem">Solo una medición — el gráfico aparecerá con 2 o más mediciones.</div>';
   }
@@ -2978,6 +2982,14 @@ function mostrarAntro(id) {
     var notasEl2 = document.getElementById('modal-antro-notas');
     if(notasEl2) notasEl2.innerHTML = '';
   }
+}
+
+function _ordenarMedsPorFecha(meds) {
+  function parseF(f) {
+    var p = (f||'').split('/');
+    return p.length===3 ? new Date(p[2], p[1]-1, p[0]).getTime() : 0;
+  }
+  return meds.slice().sort(function(a,b){ return parseF(a.fecha) - parseF(b.fecha); });
 }
 
 function buildAntroChart(meds) {
@@ -3733,7 +3745,9 @@ function antroMostrarHistorial() {
     // buildAntroChart espera los controles ordenados de más antiguo a más
     // reciente (izquierda a derecha); reg.mediciones los guarda al revés
     // (más reciente primero), así que se invierte una copia para el gráfico.
-    var medsOrdenados = meds.slice().reverse();
+    // Se ordena por fecha real (no solo por orden de carga), por si algún
+    // control se sube fuera de orden.
+    var medsOrdenados = _ordenarMedsPorFecha(meds);
     graficoHtml = '<div class="card" style="margin-bottom:.75rem;padding:.75rem .9rem">'
       + '<div style="font-size:.68rem;font-weight:700;color:var(--t3);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">Evolución % Grasa / % Músculo</div>'
       + buildAntroChart(medsOrdenados)
