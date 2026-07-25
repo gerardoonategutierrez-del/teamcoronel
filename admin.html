@@ -19,6 +19,8 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 .fi textarea{min-height:80px;resize:vertical}
 .fi select option{background:#111827}
 .btn{width:100%;padding:.7rem;background:#1d4ed8;border:none;border-radius:8px;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer}
+.lnk{text-align:center;margin-top:.85rem;font-size:.75rem;color:#6b7280}
+.lnk a{color:#3b82f6;cursor:pointer}
 .btn:hover{background:#2563eb}
 .br{background:#dc2626!important}.br:hover{background:#b91c1c!important}
 .bg{background:#16a34a!important}.bg:hover{background:#15803d!important}
@@ -75,6 +77,7 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <div class="lt">Panel Admin</div><div class="ls">Landing Team Coronel</div>
 <div class="fi"><label>CLAVE</label><input type="password" id="pw" placeholder="Clave" onkeydown="if(event.key==='Enter')go()"></div>
 <button class="btn" onclick="go()">Ingresar</button>
+<div class="lnk"><a onclick="window.location.href='index.html'">&larr; Volver a la landing</a></div>
 <div style="color:#f87171;font-size:.78rem;margin-top:.5rem;display:none" id="er">Clave incorrecta</div>
 </div></div>
 <div class="ad" id="ap">
@@ -168,7 +171,7 @@ function go(){
     document.getElementById("pw").value="";
   }
 }
-function out(){document.getElementById("ap").style.display="none";document.getElementById("lw").style.display="flex";}
+function out(){window.location.href="sistema/sistema.html";}
 
 function tab(id){
   var map={n:"noticias",g:"galeria",d:"deportistas",t:"tecnico",sp:"sponsors"};
