@@ -216,17 +216,19 @@ async function generarCertificado() {
   var hoy=new Date();
   var fechaTxt=hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
 
-  var css='*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:13.5px;line-height:1.65}'
-    +'.page{max-width:720px;margin:0 auto;padding:40px 60px 100px}'
-    +'.titulo{text-align:center;font-size:20px;font-weight:700;letter-spacing:3px;margin-bottom:40px;text-decoration:underline}'
-    +'.cuerpo{text-align:justify;margin-bottom:18px}'
+  var css='@page{size:letter;margin:0.5in}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12.5px;line-height:1.55}'
+    +'.page{max-width:680px;margin:0 auto;padding:20px 40px 65px;position:relative}'
+    +'.titulo{text-align:center;font-size:19px;font-weight:700;letter-spacing:3px;margin-bottom:28px;text-decoration:underline}'
+    +'.cuerpo{text-align:justify;margin-bottom:14px}'
     +'.nombre{font-weight:700}'
+    +'.horarios{margin:12px 0 14px 20px}'
     +'.horarios td{padding:2px 8px 2px 0}'
-    +'.cierre{text-align:justify;margin:22px 0 40px}'
-    +'.firma-bloque{display:flex;flex-direction:column;align-items:center;margin:0 auto;width:280px}'
-    +'.firma-linea{border-top:1px solid #000;width:240px;margin-bottom:6px}'
-    +'.footer{position:fixed;bottom:20px;left:60px;right:60px;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:10px;font-size:11px;color:#444}'
+    +'.cierre{text-align:justify;margin:16px 0 28px}'
+    +'.firma-bloque{display:flex;flex-direction:column;align-items:center;margin:0 auto;width:260px}'
+    +'.firma-linea{border-top:1px solid #000;width:220px;margin-bottom:6px}'
+    +'.footer{position:absolute;bottom:0;left:40px;right:40px;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#444}'
     +'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
 
   var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div class="page">'
@@ -234,7 +236,7 @@ async function generarCertificado() {
     +'<img style="width:90px" src="data:image/png;base64,' + _LOGO_B64 + '" alt="TC">'
     +'<div style="font-size:13px;padding-top:10px">'+fechaTxt+'</div></div>'
     +'<div class="titulo">CERTIFICADO N\u00ba '+certNum+'</div>'
-    +'<p class="cuerpo">El TEAM CORONEL PJ 360046, certifica que <span class="nombre">'+trato+' '+a.nm+' '+a.ap+'</span> '
+    +'<p class="cuerpo">El TEAM CORONEL PJ 360046, certifica que <span class="nombre">'+trato+' '+(a.nm+' '+a.ap).toUpperCase()+'</span> '
     +'Rut <span class="nombre">'+rut+'</span> es '+fedLabel+' de la disciplina Pat\u00edn Carrera Categor\u00eda '+catTexto
     +' y representa a nuestro club, comuna y regi\u00f3n en las competencias'
     +' que se realizan actualmente en el Patin\u00f3dromo del Estadio Nacional CAR.</p>'
@@ -250,7 +252,7 @@ async function generarCertificado() {
     +'<p class="cuerpo">Para cada competencia debe viajar los d\u00edas jueves para su proceso de adaptaci\u00f3n en la pista donde correr\u00e1.</p>'
     +'<p class="cierre">Se extiende el presente certificado a solicitud del interesado para ser presentado donde estime pertinente.</p>'
     +'<div class="firma-bloque">'
-    +'<img style="width:260px;height:130px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + _FIRMA_B64 + '" alt="Firma">'
+    +'<img style="width:220px;height:110px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + _FIRMA_B64 + '" alt="Firma">'
     +'<div class="firma-linea"></div>'
     +'<div style="font-weight:700;font-size:13px;text-align:center">Gerardo O\u00f1ate G.</div>'
     +'<div style="font-size:13px;text-align:center">Presidente</div>'
