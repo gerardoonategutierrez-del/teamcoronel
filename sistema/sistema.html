@@ -3128,6 +3128,8 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '.obs-text {font-size:11px;color:#374151;line-height:1.5}'
     + '.alerta {background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400e}'
     + '.lab-box {background:#eff6ff;border-radius:6px;padding:8px 12px;margin-top:10px;font-size:11px;color:#1e40af}'
+    + '.analisis-box {background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;margin-top:10px;font-size:11px;color:#166534;line-height:1.6}'
+    + '.analisis-box b {color:#15803d;text-transform:uppercase;font-size:9px;letter-spacing:1px;display:block;margin-bottom:4px}'
     + '.footer-doc {margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:9px;color:#9ca3af}'
     + '@media print {body {-webkit-print-color-adjust:exact;print-color-adjust:exact}.page {padding:20px}}';
 
@@ -3474,11 +3476,92 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 
+// Genera un breve análisis profesional de la evolución de los tiempos en
+// pista, agrupado por tipo de control (Lanzado / Detenido / 100mt).
+// Se basa en la comparación entre el primer y el último registro de cada
+// tipo, más la mejor marca alcanzada en el período.
+function _analizarTiempos(historialTiempos) {
+  function parseF(f){ var p=(f||'').split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0; }
+  function getT(h){
+    if(h.tiempo && !isNaN(parseFloat(h.tiempo))) return parseFloat(h.tiempo);
+    var m=(h.nota||'').match(/([\d]+[.,][\d]+)"/);
+    return m ? parseFloat(m[1].replace(',','.')) : null;
+  }
+  var etiquetas = {lanzado:'200mt Lanzado', parado:'200mt Detenido', '100m':'100mt'};
+  var grupos = {};
+  historialTiempos.forEach(function(h){
+    var tipo = h.tipoControl || 'lanzado';
+    var t = getT(h);
+    if(t===null) return;
+    if(!grupos[tipo]) grupos[tipo]=[];
+    grupos[tipo].push({fecha:h.fecha, t:t});
+  });
+
+  var frases = [];
+  Object.keys(grupos).forEach(function(tipo){
+    var arr = grupos[tipo].sort(function(a,b){ return parseF(a.fecha)-parseF(b.fecha); });
+    if(arr.length < 2) return;
+    var primero = arr[0].t, ultimo = arr[arr.length-1].t;
+    var mejor = Math.min.apply(null, arr.map(function(x){ return x.t; }));
+    var diff = ultimo - primero;
+    var pct = Math.abs(diff/primero*100).toFixed(1);
+    var etiqueta = etiquetas[tipo] || tipo;
+    var texto;
+    if(diff < -0.05) {
+      texto = etiqueta+': mejora sostenida de '+Math.abs(diff).toFixed(2)+'\" ('+pct+'%) entre el primer y el último control registrado, con mejor marca de '+mejor.toFixed(2)+'\" en el período. Tendencia positiva.';
+    } else if(diff > 0.05) {
+      texto = etiqueta+': se observa un descenso de rendimiento de '+diff.toFixed(2)+'\" ('+pct+'%) respecto al primer registro. Se sugiere revisar carga de entrenamiento, técnica y descanso.';
+    } else {
+      texto = etiqueta+': rendimiento estable, sin variaciones relevantes entre los '+arr.length+' controles registrados.';
+    }
+    frases.push(texto);
+  });
+
+  if(!frases.length) return '';
+  return '<div class="analisis-box"><b>Análisis</b>'+frases.join('<br>')+'</div>';
+}
+
+// Genera un breve análisis profesional de la evolución antropométrica,
+// comparando el primer y el último control de peso, % grasa y % músculo.
+function _analizarAntro(mediciones) {
+  function parseF(f){ var p=(f||'').split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0; }
+  var arr = mediciones.slice().sort(function(a,b){ return parseF(a.fecha)-parseF(b.fecha); });
+  if(arr.length < 2) return '';
+
+  var primero = arr[0], ultimo = arr[arr.length-1];
+  var pesoP = parseFloat(primero.peso), pesoU = parseFloat(ultimo.peso);
+  var grasaP = parseFloat(primero.pct_grasa), grasaU = parseFloat(ultimo.pct_grasa);
+  var muscP = parseFloat(primero.pct_musculo), muscU = parseFloat(ultimo.pct_musculo);
+
+  var partes = [];
+  if(!isNaN(pesoP) && !isNaN(pesoU)) {
+    var dPeso = pesoU-pesoP;
+    partes.push('peso '+(dPeso>=0?'+':'')+dPeso.toFixed(1)+'kg');
+  }
+  var dGrasa = (!isNaN(grasaP) && !isNaN(grasaU)) ? grasaU-grasaP : null;
+  if(dGrasa!==null) partes.push('% grasa '+(dGrasa>=0?'+':'')+dGrasa.toFixed(1)+'%');
+  var dMusc = (!isNaN(muscP) && !isNaN(muscU)) ? muscU-muscP : null;
+  if(dMusc!==null) partes.push('% músculo '+(dMusc>=0?'+':'')+dMusc.toFixed(1)+'%');
+
+  var texto = 'Evolución entre '+primero.fecha+' y '+ultimo.fecha+' ('+arr.length+' controles): '+partes.join(', ')+'. ';
+  if(dMusc!==null && dGrasa!==null && dMusc>0.3 && dGrasa<=0.3) {
+    texto += 'Tendencia favorable de composición corporal, con aumento de masa muscular sin incremento relevante de grasa.';
+  } else if(dGrasa!==null && dGrasa>0.5) {
+    texto += 'Se observa un aumento del porcentaje graso; se sugiere ajustar el plan nutricional y de trabajo físico.';
+  } else if(dMusc!==null && dMusc<-0.5) {
+    texto += 'Se observa una disminución de masa muscular; se sugiere revisar carga de trabajo y aporte proteico.';
+  } else {
+    texto += 'Composición corporal estable en el período evaluado.';
+  }
+  return '<div class="analisis-box"><b>Análisis</b>'+texto+'</div>';
+}
+
 function descargarFicha(id) {
   var a = ATHLETES.find(function(x){ return x.id===id; });
   if(!a) return;
-  var ex    = athletesExtra[id] || athletesExtra[String(id)] || {};
-  var hist  = (ex.historial||[]).filter(function(h){ return h.tipo!=='tiempo'; }).slice().reverse();
+  var ex          = athletesExtra[id] || athletesExtra[String(id)] || {};
+  var hist        = (ex.historial||[]).filter(function(h){ return h.tipo!=='tiempo'; }).slice().reverse();
+  var histTiempos = (ex.historial||[]).filter(function(h){ return h.tipo==='tiempo'; });
   var antro = ANTROPOMETRIA ? (ANTROPOMETRIA[id]||ANTROPOMETRIA[String(id)]) : null;
   var hoy   = new Date();
   var fd    = (hoy.getDate()<10?'0':'')+hoy.getDate()+'/'+(hoy.getMonth()<9?'0':'')+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
@@ -3488,7 +3571,8 @@ function descargarFicha(id) {
   var tHTML = '';
   if(tGraf && tGraf.innerHTML.trim()) {
     tHTML = '<div class="section"><div class="section-title">Evolucion de Tiempos en Pista</div>'
-      +'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px">'+tGraf.innerHTML+'</div></div>';
+      +'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px">'+tGraf.innerHTML+'</div>'
+      +_analizarTiempos(histTiempos)+'</div>';
   }
 
   var aHTML = '';
@@ -3501,6 +3585,7 @@ function descargarFicha(id) {
     }).join('');
     aHTML = '<div class="section"><div class="section-title">Seguimiento Antropometrico</div>'
       +ab+(agInner?'<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:10px">'+agInner+'</div>':'')
+      +_analizarAntro(antro.mediciones)
       +'<table><thead><tr><th>Fecha</th><th>Talla</th><th>Peso</th><th>% Grasa</th><th>% Musculo</th></tr></thead><tbody>'+mR+'</tbody></table>';
     if(antro.laboratorio && antro.laboratorio.length) {
       var lb = antro.laboratorio[0];
