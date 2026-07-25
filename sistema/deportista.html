@@ -196,25 +196,29 @@ async function _generarYDescargarPDF(htmlDoc, filename) {
       document.head.appendChild(s);
     });
   }
+  var LETTER_W = 816;
+  var LETTER_H = 1056;
   var iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.left = '-99999px';
   iframe.style.top = '0';
-  iframe.style.width = '850px';
-  iframe.style.height = '1100px';
+  iframe.style.border = 'none';
+  iframe.style.width = LETTER_W + 'px';
+  iframe.style.height = '3000px';
   document.body.appendChild(iframe);
   iframe.contentDocument.open();
   iframe.contentDocument.write(htmlDoc);
   iframe.contentDocument.close();
   await new Promise(function(resolve){ setTimeout(resolve, 500); });
-  var pageEl = iframe.contentDocument.querySelector('.page') || iframe.contentDocument.body;
+  var bodyEl = iframe.contentDocument.body;
   try {
-    await html2pdf().from(pageEl).set({
+    await html2pdf().from(bodyEl).set({
       margin: 0,
       filename: filename,
       image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: LETTER_W },
+      jsPDF: { unit: 'px', format: [LETTER_W, LETTER_H], orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
     }).save();
   } finally {
     document.body.removeChild(iframe);
