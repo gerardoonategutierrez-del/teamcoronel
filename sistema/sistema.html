@@ -2076,7 +2076,8 @@ function buildTiemposChart(datos, color, label) {
   // Dots + labels
   var dots = datos.map(function(h,i){
     var t=getTiempo(h), x=xp(i,datos.length), y=yp(t);
-    var fecha=h.fecha.split('/').slice(0,2).join('/');
+    var fp=h.fecha.split('/');
+    var fecha=fp.length>=3 ? fp[1]+'/'+fp[2].slice(-2) : h.fecha;
     return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+color+'" stroke="var(--bg)" stroke-width="1.5"/>'
       +'<text x="'+x+'" y="'+(y-8)+'" font-size="8.5" fill="'+color+'" text-anchor="middle">'+t.toFixed(2)+'"</text>'
       +'<text x="'+x+'" y="'+(H-6)+'" font-size="7.5" fill="rgba(107,114,128,.8)" text-anchor="middle">'+fecha+'</text>';
@@ -3031,7 +3032,7 @@ function buildAntroChart(meds) {
   // X labels (dates)
   var xlabels = meds.map(function(m,i){
     var d = m.fecha.split('/');
-    var label = d.length>=2 ? d[0]+'/'+d[1] : m.fecha.substring(0,5);
+    var label = d.length>=3 ? d[1]+'/'+d[2].slice(-2) : m.fecha.substring(0,5);
     return '<text x="'+xPos(i)+'" y="'+(H-4)+'" font-size="8" fill="rgba(107,114,128,.8)" text-anchor="middle">'+label+'</text>';
   }).join('');
 
@@ -3142,7 +3143,7 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '<div class="doc-info"><div><b>Ficha del Deportista</b></div><div>Temporada 2026</div>'
     + '<div style="margin-top:4px">Emisión: '+fechaDoc+'</div></div></div>'
     + '<div class="ath-hdr"><div>'
-    + '<div class="ath-name">'+a.ap+' '+a.nm+'</div>'
+    + '<div class="ath-name">'+(a.ap+' '+a.nm).toUpperCase()+'</div>'
     + '<div class="ath-meta">Nacimiento: '+(a.nac||'—')+' · Género: '+(a.gen==='F'?'Femenino':'Masculino')+'</div>'
     + '<div class="badges">'
     + '<span class="badge" style="background:rgba('+(a.grupo==='arv'||a.grupo==='arf'?'34,197,94':'245,158,11')+',.25)">'+(grupoMap[a.grupo]||a.grupo)+'</span>'
@@ -3329,6 +3330,22 @@ async function _ejecutarSyncToSheets() {
 }
 
 async function syncFromSheets() {
+  // Las columnas de fecha en Google Sheets (Nacimiento, Ingreso) a veces
+  // llegan como fecha/hora completa en formato ISO (ej: "2011-03-10T03:00:00.000Z")
+  // en vez de texto simple. Esta función las normaliza a DD/MM/AAAA.
+  function normalizarFecha(v) {
+    if(!v) return v;
+    v = String(v);
+    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v)) return v; // ya está en DD/MM/AAAA
+    if(/^\d{4}-\d{2}-\d{2}/.test(v)) {
+      var d = new Date(v);
+      if(!isNaN(d.getTime())) {
+        return (d.getUTCDate()<10?'0':'')+d.getUTCDate()+'/'+((d.getUTCMonth()+1)<10?'0':'')+(d.getUTCMonth()+1)+'/'+d.getUTCFullYear();
+      }
+    }
+    return v;
+  }
+
   var el = document.getElementById('sync-status');
   if(el) { el.textContent = '☁ ...'; el.style.color = 'var(--t3)'; }
   console.log('[SYNC] Starting syncFromSheets...');
@@ -3348,7 +3365,7 @@ async function syncFromSheets() {
         var id = parseInt(row[1]);
         var a = ATHLETES.find(function(x){ return x.id===id; });
         if(a) {
-          a.nac    = row[4]  || a.nac;
+          a.nac    = normalizarFecha(row[4])  || a.nac;
           a.rut    = row[5]  || a.rut;
           a.cat    = row[6]  || a.cat;
           a.grupo  = row[10] || a.grupo;
@@ -3361,7 +3378,7 @@ async function syncFromSheets() {
 
         var entry = {
           apodNm:    row[14]||'', apodTel:   row[15]||'',
-          apodEmail: row[16]||'', ingreso:   row[13]||'',
+          apodEmail: row[16]||'', ingreso:   normalizarFecha(row[13])||'',
           historial: historial
         };
         athletesExtra[id]         = entry;
