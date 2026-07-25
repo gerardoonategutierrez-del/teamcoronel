@@ -225,6 +225,39 @@ async function _generarYDescargarPDF(htmlDoc, filename) {
   }
 }
 
+// Carga jsPDF de forma independiente (no depende de html2pdf) para
+// construir el certificado dibujando texto e imágenes directamente en la
+// página — evita cualquier problema de fondos oscuros o recortes que
+// puede dar "fotografiar" un HTML con html2canvas.
+async function _cargarJsPDFDirecto() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+  await new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+function _pintarParrafoMixto(doc, segmentos, x, y, anchoMax, interlineado, tamano) {
+  doc.setFontSize(tamano);
+  var cx = x, cy = y;
+  segmentos.forEach(function(seg) {
+    doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+    seg.text.split(' ').forEach(function(palabra, idx, arr) {
+      if (!palabra) return;
+      var pieza = palabra + (idx < arr.length - 1 ? ' ' : '');
+      var w = doc.getTextWidth(pieza);
+      if (cx + w > x + anchoMax) { cx = x; cy += interlineado; }
+      doc.text(pieza, cx, cy);
+      cx += w;
+    });
+  });
+  return cy + interlineado;
+}
+
 async function generarCertificado() {
   if(!_athlete) { toast('Cargando datos...'); return; }
   var a = _athlete;
@@ -241,7 +274,6 @@ async function generarCertificado() {
     certCount = dataNum && dataNum.numero ? dataNum.numero : null;
   } catch(e) { certCount = null; }
   if(!certCount) {
-    // Respaldo si falla la conexión: numeración local (puede no ser correlativa)
     certCount = parseInt(localStorage.getItem('tc_cert_count')||'0') + 1;
     localStorage.setItem('tc_cert_count', certCount);
   }
@@ -258,55 +290,86 @@ async function generarCertificado() {
   var hoy=new Date();
   var fechaTxt=hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
 
-  var css='@page{size:letter;margin:0.5in}'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,sans-serif;background:#fff;color:#000;font-size:12.5px;line-height:1.55}'
-    +'.page{max-width:680px;margin:0 auto;padding:20px 40px 65px;position:relative}'
-    +'.titulo{text-align:center;font-size:19px;font-weight:700;letter-spacing:3px;margin-bottom:28px;text-decoration:underline}'
-    +'.cuerpo{text-align:justify;margin-bottom:14px}'
-    +'.nombre{font-weight:700}'
-    +'.horarios{margin:12px 0 14px 20px}'
-    +'.horarios td{padding:2px 8px 2px 0}'
-    +'.cierre{text-align:justify;margin:16px 0 28px}'
-    +'.firma-bloque{display:flex;flex-direction:column;align-items:center;margin:0 auto;width:260px}'
-    +'.firma-linea{border-top:1px solid #000;width:220px;margin-bottom:6px}'
-    +'.footer{position:absolute;bottom:0;left:40px;right:40px;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#444}'
-    +'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
-
-  var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div class="page">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:35px">'
-    +'<img style="width:90px" src="data:image/png;base64,' + _LOGO_B64 + '" alt="TC">'
-    +'<div style="font-size:13px;padding-top:10px">'+fechaTxt+'</div></div>'
-    +'<div class="titulo">CERTIFICADO N\u00ba '+certNum+'</div>'
-    +'<p class="cuerpo">El TEAM CORONEL PJ 360046, certifica que <span class="nombre">'+trato+' '+(a.nm+' '+a.ap).toUpperCase()+'</span> '
-    +'Rut <span class="nombre">'+rut+'</span> es '+fedLabel+' de la disciplina Pat\u00edn Carrera Categor\u00eda '+catTexto
-    +' y representa a nuestro club, comuna y regi\u00f3n en las competencias'
-    +' que se realizan actualmente en el Patin\u00f3dromo del Estadio Nacional CAR.</p>'
-    +'<p>Sus Horario de entrenamientos son:</p>'
-    +'<div style="margin:16px 0 18px 20px"><table class="horarios">'
-    +'<tr><td style="width:110px">Lunes</td><td>16:30 hrs.</td></tr>'
-    +'<tr><td>Martes</td><td>15:45 hrs.</td></tr>'
-    +'<tr><td>Mi\u00e9rcoles</td><td>17:30 hrs.</td></tr>'
-    +'<tr><td>Jueves</td><td>15:45 hrs.</td></tr>'
-    +'<tr><td>Viernes</td><td>17:30 hrs.</td></tr>'
-    +'<tr><td>S\u00e1bado</td><td>07:00 hrs.</td></tr>'
-    +'</table></div>'
-    +'<p class="cuerpo">Para cada competencia debe viajar los d\u00edas jueves para su proceso de adaptaci\u00f3n en la pista donde correr\u00e1.</p>'
-    +'<p class="cierre">Se extiende el presente certificado a solicitud del interesado para ser presentado donde estime pertinente.</p>'
-    +'<div class="firma-bloque">'
-    +'<img style="width:220px;height:110px;object-fit:contain;margin-bottom:4px" src="data:image/png;base64,' + _FIRMA_B64 + '" alt="Firma">'
-    +'<div class="firma-linea"></div>'
-    +'<div style="font-weight:700;font-size:13px;text-align:center">Gerardo O\u00f1ate G.</div>'
-    +'<div style="font-size:13px;text-align:center">Presidente</div>'
-    +'<div style="font-size:13px;text-align:center">TEAM CORONEL</div>'
-    +'</div>'
-    +'<div style="margin-top:35px;font-size:12px">Cc: Archivo</div>'
-    +'<div class="footer"><span>team coronel</span><span>patincarreracoronel@gmail.com</span><span>teamcoronel.cl</span></div>'
-    +'</div></body></html>';
-
   try {
+    var jsPDFClass = await _cargarJsPDFDirecto();
+    var doc = new jsPDFClass({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+    var pageW = 612, marginX = 55, contentW = pageW - marginX*2;
+
+    doc.setTextColor(0,0,0);
+    try { doc.addImage('data:image/png;base64,'+_LOGO_B64, 'PNG', marginX, 40, 62, 62); } catch(e){}
+    doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+    doc.text(fechaTxt, pageW-marginX, 55, {align:'right'});
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    var tituloY = 135;
+    var tituloTxt = 'CERTIFICADO N\u00ba '+certNum;
+    doc.text(tituloTxt, pageW/2, tituloY, {align:'center'});
+    var tw = doc.getTextWidth(tituloTxt);
+    doc.setLineWidth(0.8);
+    doc.line(pageW/2-tw/2, tituloY+4, pageW/2+tw/2, tituloY+4);
+
+    var y = tituloY + 40;
+    y = _pintarParrafoMixto(doc, [
+      {text:'El TEAM CORONEL PJ 360046, certifica que', bold:false},
+      {text:trato+' '+(a.nm+' '+a.ap).toUpperCase(), bold:true},
+      {text:'Rut', bold:false},
+      {text:rut, bold:true},
+      {text:'es '+fedLabel+' de la disciplina Pat\u00edn Carrera Categor\u00eda '+catTexto+' y representa a nuestro club, comuna y regi\u00f3n en las competencias que se realizan actualmente en el Patin\u00f3dromo del Estadio Nacional CAR.', bold:false}
+    ], marginX, y, contentW, 15, 11.5);
+
+    y += 12;
+    doc.setFont('helvetica','normal'); doc.setFontSize(11.5);
+    doc.text('Sus Horario de entrenamientos son:', marginX, y);
+    y += 20;
+
+    var horarios = [['Lunes','16:30 hrs.'],['Martes','15:45 hrs.'],['Mi\u00e9rcoles','17:30 hrs.'],['Jueves','15:45 hrs.'],['Viernes','17:30 hrs.'],['S\u00e1bado','07:00 hrs.']];
+    horarios.forEach(function(h){
+      doc.text(h[0], marginX+15, y);
+      doc.text(h[1], marginX+120, y);
+      y += 15;
+    });
+
+    y += 10;
+    y = _pintarParrafoMixto(doc, [
+      {text:'Para cada competencia debe viajar los d\u00edas jueves para su proceso de adaptaci\u00f3n en la pista donde correr\u00e1.', bold:false}
+    ], marginX, y, contentW, 15, 11.5);
+
+    y += 16;
+    y = _pintarParrafoMixto(doc, [
+      {text:'Se extiende el presente certificado a solicitud del interesado para ser presentado donde estime pertinente.', bold:false}
+    ], marginX, y, contentW, 15, 11.5);
+
+    y += 35;
+    var firmaW = 170, firmaH = 85;
+    var firmaX = pageW/2 - firmaW/2;
+    try { doc.addImage('data:image/png;base64,'+_FIRMA_B64, 'PNG', firmaX, y, firmaW, firmaH); } catch(e){}
+    y += firmaH + 4;
+    doc.setLineWidth(0.6);
+    doc.line(pageW/2-85, y, pageW/2+85, y);
+    y += 14;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('Gerardo O\u00f1ate G.', pageW/2, y, {align:'center'});
+    y += 13;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+    doc.text('Presidente', pageW/2, y, {align:'center'});
+    y += 12;
+    doc.text('TEAM CORONEL', pageW/2, y, {align:'center'});
+
+    y += 25;
+    doc.setFontSize(10);
+    doc.text('Cc: Archivo', marginX, y);
+
+    var footerY = 760;
+    doc.setDrawColor(200,200,200);
+    doc.setLineWidth(0.5);
+    doc.line(marginX, footerY-10, pageW-marginX, footerY-10);
+    doc.setFontSize(8.5); doc.setTextColor(90,90,90);
+    doc.text('team coronel', marginX, footerY);
+    doc.text('patincarreracoronel@gmail.com', pageW/2, footerY, {align:'center'});
+    doc.text('teamcoronel.cl', pageW-marginX, footerY, {align:'right'});
+
     var nombreArchivo = 'Certificado_'+certNum+'_'+a.ap.replace(/\s+/g,'_')+'_'+a.nm.replace(/\s+/g,'_')+'.pdf';
-    await _generarYDescargarPDF(html, nombreArchivo);
+    doc.save(nombreArchivo);
     toast('\u2713 Certificado N\u00ba '+certNum+' descargado');
   } catch(e) {
     toast('Error al generar el PDF, intenta de nuevo', 'err');
