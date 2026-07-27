@@ -60,6 +60,16 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 .gt img{width:100%;height:100%;object-fit:cover}
 .gd{position:absolute;top:.25rem;right:.25rem;width:22px;height:22px;background:rgba(220,38,38,.9);border:none;border-radius:50%;color:#fff;font-size:.65rem;cursor:pointer}
 .em{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.cropm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;align-items:center;justify-content:center;padding:1rem}
+.cropm.op{display:flex}
+.cropc{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:1.25rem;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;gap:.85rem}
+.cropc h3{font-size:.95rem;margin:0}
+.crop-area{width:100%;height:360px;background:#111827;border-radius:8px;overflow:hidden}
+.crop-area img{max-width:100%;display:block}
+.crop-zoom-row{display:flex;align-items:center;gap:.6rem}
+.crop-zoom-row input[type=range]{flex:1}
+.crop-btns{display:flex;gap:.6rem}
+.crop-btns .btn{flex:1}
 .em.op{display:flex}
 .emc{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
 .emc h3{font-size:.85rem;font-weight:700;color:#3b82f6;margin-bottom:1rem}
@@ -118,12 +128,23 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <div class="fs"><h3>+ Agregar Deportista</h3>
 <div class="fg"><div class="fi"><label>NOMBRE</label><input id="d0" type="text" placeholder="Apellidos Nombre"></div>
 <div class="fi"><label>EDAD</label><input id="d1" type="text" placeholder="ej: 15 años"></div></div>
-<div class="fg"><div class="fi"><label>CATEGORÍA</label><input id="d2" type="text" placeholder="ej: Alto Rendimiento"></div>
-<div class="fi"><label>FOTO</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d3','d')">
-<div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd">Subiendo...</div>
-<img class="uap" id="pd3"></div><input type="hidden" id="d3"></div></div>
+<div class="fi"><label>CATEGORÍA</label><input id="d2" type="text" placeholder="ej: Alto Rendimiento"></div>
+<div class="fg" style="grid-template-columns:repeat(2,1fr)">
+  <div class="fi"><label>FOTO 1 (Principal)</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d3','d')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd3">Subiendo...</div>
+  <img class="uap" id="pd3"></div><input type="hidden" id="d3"></div></div>
+  <div class="fi"><label>FOTO 2</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d5','d')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd5">Subiendo...</div>
+  <img class="uap" id="pd5"></div><input type="hidden" id="d5"></div></div>
+  <div class="fi"><label>FOTO 3</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d6','d')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd6">Subiendo...</div>
+  <img class="uap" id="pd6"></div><input type="hidden" id="d6"></div></div>
+  <div class="fi"><label>FOTO 4</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'d7','d')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upd7">Subiendo...</div>
+  <img class="uap" id="pd7"></div><input type="hidden" id="d7"></div></div>
+</div>
 <div class="fi"><label>LOGRO</label><input id="d4" type="text" placeholder="ej: Selección Nacional 2026"></div>
-<button class="btn" onclick="add('landing_deportistas',['d0','d1','d2','d3','d4'],cD)">Agregar</button>
+<button class="btn" onclick="add('landing_deportistas',['d0','d1','d2','d3','d4','d5','d6','d7'],cD)">Agregar</button>
 </div><div id="lD"><div class="ie">Cargando...</div></div></div>
 <div class="tp" id="tp-t">
 <div class="fs"><h3>+ Agregar Staff</h3>
@@ -146,6 +167,21 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <button class="btn" onclick="add('landing_sponsors',['sp0','sp1','sp2','sp3'],cSP)">Agregar</button>
 </div><div id="lSP"><div class="ie">Cargando...</div></div></div>
 </div></div>
+<div class="cropm" id="cropm">
+  <div class="cropc">
+    <h3>Ajustar foto</h3>
+    <div class="crop-area"><img id="crop-img" src=""></div>
+    <div class="crop-zoom-row">
+      <span style="font-size:.8rem">&#128269;</span>
+      <input type="range" id="crop-zoom" min="0" max="3" step="0.05" value="0">
+    </div>
+    <div class="crop-btns">
+      <button class="btn bs" style="background:#374151" onclick="cancelarCrop()">Cancelar</button>
+      <button class="btn bs bg" onclick="confirmarCrop()">Usar esta foto</button>
+    </div>
+  </div>
+</div>
+
 <div class="em" id="em"><div class="emc">
 <h3 id="et">Editar</h3><div id="ef"></div>
 <div style="display:flex;gap:.5rem;margin-top:1rem">
@@ -193,8 +229,94 @@ function toast(msg,ok){
   t.style.display="block";setTimeout(function(){t.style.display="none";},2500);
 }
 
+// ══ VISOR DE FOTO COMPLETA (Noticias / Galería / Deportistas) ══════
+
+// ══ RECORTAR / ACERCAR / ALEJAR FOTO ANTES DE GUARDAR ══════════════
+// Aplica solo a Noticias, Galería y Deportistas.
+
+var _cropper=null, _cropResolver=null;
+
+function _cargarCropperJS(){
+  if(window.Cropper) return Promise.resolve();
+  return new Promise(function(resolve,reject){
+    var link=document.createElement("link");
+    link.rel="stylesheet";
+    link.href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css";
+    document.head.appendChild(link);
+    var s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js";
+    s.onload=resolve;
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Abre el modal de recorte con la foto seleccionada. Devuelve una Promise
+// que entrega el Blob ya recortado/ajustado (o null si el usuario cancela).
+function _abrirCropModal(file){
+  return new Promise(async function(resolve){
+    _cropResolver=resolve;
+    try{ await _cargarCropperJS(); }
+    catch(e){ toast("No se pudo cargar el editor de fotos, se sube la original",false); resolve(file); return; }
+
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var img=document.getElementById("crop-img");
+      img.src=ev.target.result;
+      document.getElementById("cropm").classList.add("op");
+
+      if(_cropper){ _cropper.destroy(); _cropper=null; }
+      // Se espera a que la imagen cargue antes de inicializar Cropper
+      img.onload=function(){
+        _cropper=new Cropper(img,{
+          viewMode:1,
+          background:false,
+          autoCropArea:1,
+          movable:true,
+          zoomable:true,
+          scalable:false,
+          rotatable:false
+        });
+        var zoomEl=document.getElementById("crop-zoom");
+        zoomEl.value=0;
+        zoomEl.oninput=function(){
+          if(_cropper) _cropper.zoomTo(parseFloat(zoomEl.value));
+        };
+      };
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function cancelarCrop(){
+  document.getElementById("cropm").classList.remove("op");
+  if(_cropper){ _cropper.destroy(); _cropper=null; }
+  if(_cropResolver){ _cropResolver(null); _cropResolver=null; }
+}
+
+function confirmarCrop(){
+  if(!_cropper){ cancelarCrop(); return; }
+  _cropper.getCroppedCanvas({maxWidth:1600,maxHeight:1600}).toBlob(function(blob){
+    document.getElementById("cropm").classList.remove("op");
+    if(_cropper){ _cropper.destroy(); _cropper=null; }
+    if(_cropResolver){ _cropResolver(blob); _cropResolver=null; }
+  }, "image/jpeg", 0.92);
+}
+
+// Secciones donde aplica el recorte antes de subir
+var _PFX_CON_RECORTE=["n","g","d"];
+var _SHEETS_CON_RECORTE=["landing_noticias","landing_galeria","landing_deportistas"];
+
+
 async function up(inp,hid,pfx){
   var f=inp.files[0];if(!f)return;
+
+  if(_PFX_CON_RECORTE.indexOf(pfx)!==-1){
+    var recortada=await _abrirCropModal(f);
+    if(!recortada) return; // el usuario canceló el recorte
+    f=recortada;
+  }
+
   var up=document.getElementById("up"+pfx);if(up)up.style.display="block";
   var fd=new FormData();fd.append("file",f);fd.append("upload_preset",PRESET);
   try{
@@ -288,6 +410,13 @@ function openEdit(sheet,idx,labels,vals,reload){
 
 async function upEdit(input,fieldIdx){
   var file=input.files[0];if(!file)return;
+
+  if(_SHEETS_CON_RECORTE.indexOf(_es)!==-1){
+    var recortada=await _abrirCropModal(file);
+    if(!recortada) return; // el usuario canceló el recorte
+    file=recortada;
+  }
+
   var up=document.getElementById("upEdit"+fieldIdx);if(up)up.style.display="block";
   var fd=new FormData();fd.append("file",file);fd.append("upload_preset",PRESET);
   try{
@@ -385,15 +514,52 @@ async function cD(){
     var el=document.getElementById("lD");
     if(!d.length){el.innerHTML='<div class="ie">Sin deportistas a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
+      var fotos=[r[3],r[5],r[6],r[7]];
+      var destIdx=(parseInt(r[8])||1)-1;
+      if(destIdx<0||destIdx>3||!fotos[destIdx]) destIdx=fotos.findIndex(Boolean);
+      var fotoPrincipal=destIdx>-1?fotos[destIdx]:'';
+
+      var miniFotos=fotos.map(function(f,slot){
+        if(!f){
+          return '<div style="width:34px;height:34px;border-radius:6px;background:#111827;border:1px dashed #374151;'
+            +'display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:.6rem;flex-shrink:0">'+(slot+1)+'</div>';
+        }
+        var esDest=slot===destIdx;
+        return '<div style="position:relative;flex-shrink:0">'
+          +'<img src="'+f+'" style="width:34px;height:34px;border-radius:6px;object-fit:cover;'+(esDest?'outline:2px solid #f59e0b':'outline:1px solid #374151')+'">'
+          +'<button onclick="destacarFotoDeportista('+i+','+slot+')" title="'+(esDest?'Foto principal actual':'Marcar como principal')+'" '
+          +'style="position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;border:none;font-size:.6rem;line-height:16px;padding:0;cursor:pointer;'
+          +(esDest?'background:#f59e0b;color:#111827':'background:#374151;color:#9ca3af')+'">&#9733;</button>'
+          +'</div>';
+      }).join('');
+
+      return '<div class="ic">'+(fotoPrincipal?'<img class="ii" src="'+fotoPrincipal+'" style="object-position:top">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#x1F6FC;</div>')
         +'<div class="inf"><div class="it">'+r[0]+'</div><div class="is">'+r[2]+' &middot; '+r[1]+'</div>'
-        +(r[4]?'<div class="is">&#127942; '+r[4]+'</div>':'')+
-        '<div class="ia">'
+        +(r[4]?'<div class="is">&#127942; '+r[4]+'</div>':'')
+        +'<div style="display:flex;gap:.4rem;margin:.5rem 0">'+miniFotos+'</div>'
+        +'<div class="ia">'
         +'<button class="btn bs bo" onclick="edit(\'D\','+i+',\'landing_deportistas\',cD)">Editar</button>'
         +'<button class="btn bs br" onclick="del(\'landing_deportistas\','+i+',cD)">Eliminar</button>'
         +'</div></div></div>';
     }).join("");
   }catch(e){document.getElementById("lD").innerHTML='<div class="ie">Error al cargar</div>';}
+}
+
+async function destacarFotoDeportista(idx, slot){
+  var rows=_STORE.D||[];
+  var row=rows[idx];
+  if(!row) return;
+  var fotos=[row[3],row[5],row[6],row[7]];
+  if(!fotos[slot]){ toast("Esa foto est\u00e1 vac\u00eda",false); return; }
+  var nueva=row.slice(0,9);
+  while(nueva.length<9) nueva.push("");
+  nueva[8]=String(slot+1);
+  toast("Actualizando...");
+  try{
+    await updRow("landing_deportistas", idx, nueva);
+    toast("\u2713 Foto principal actualizada");
+    setTimeout(cD,900);
+  }catch(e){toast("Error al actualizar",false);}
 }
 
 async function cT(){
@@ -432,7 +598,7 @@ async function cSP(){
 
 var _LABELS={
   N:['TÍTULO','FECHA','TEXTO','FOTO'],
-  D:['NOMBRE','EDAD','CATEGORÍA','FOTO','LOGRO'],
+  D:['NOMBRE','EDAD','CATEGORÍA','FOTO 1','LOGRO','FOTO 2','FOTO 3','FOTO 4','DESTACADA'],
   T:['NOMBRE','CARGO','DESCRIPCIÓN','FOTO'],
   SP:['NOMBRE','INSTAGRAM','DESCRIPCIÓN','LOGO']
 };
@@ -446,7 +612,13 @@ function edit(store,idx,sheet,reload){
   labels.forEach(function(lbl,i){
     var val=(row[i]||"");
     var isTA=lbl==="TEXTO"||lbl.indexOf("DESC")>-1;
-    var isFoto=lbl==="FOTO"||lbl==="LOGO";
+    var isFoto=lbl.indexOf("FOTO")>-1||lbl==="LOGO";
+    if(lbl==="DESTACADA"){
+      // No se muestra como campo editable aquí (se maneja con las estrellas
+      // en la lista), pero se preserva su valor oculto para no perderlo al guardar.
+      html+='<input type="hidden" id="ef'+i+'" value="'+(val+"").replace(/"/g,"&quot;")+'">';
+      return;
+    }
     html+='<div class="efi"><label>'+lbl+'</label>';
     if(isFoto){
       if(val){html+='<img src="'+val+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;display:block;margin-bottom:.4rem">';}
