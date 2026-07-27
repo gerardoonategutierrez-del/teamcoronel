@@ -429,13 +429,15 @@ async function upEdit(input,fieldIdx){
     file=recortada;
   }
 
-  var up=document.getElementById("upEdit"+fieldIdx);if(up)up.style.display="block";
+  var up=document.getElementById("upE"+fieldIdx);if(up)up.style.display="block";
   var fd=new FormData();fd.append("file",file);fd.append("upload_preset",PRESET);
   try{
     var r=await fetch("https://api.cloudinary.com/v1_1/"+CLOUD+"/image/upload",{method:"POST",body:fd});
     var d=await r.json();
     if(d.secure_url){
       document.getElementById("ef"+fieldIdx).value=d.secure_url;
+      var prev=document.getElementById("efPrev"+fieldIdx);
+      if(prev){ prev.src=d.secure_url; prev.style.display="block"; }
       toast("\u2713 Foto subida");
     }else toast("Error al subir",false);
   }catch(e){toast("Error de conexi\u00f3n",false);}
@@ -633,7 +635,7 @@ function edit(store,idx,sheet,reload){
     }
     html+='<div class="efi"><label>'+lbl+'</label>';
     if(isFoto){
-      if(val){html+='<img src="'+val+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;display:block;margin-bottom:.4rem">';}
+      html+='<img id="efPrev'+i+'" src="'+(val||"")+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;display:'+(val?"block":"none")+';margin-bottom:.4rem">';
       html+='<div class="ua" style="min-height:50px;margin-bottom:.4rem">'+
         '<input type="file" accept="image/*" onchange="upEdit(this,'+i+')">'+
         '<div class="ual"><b>Subir nueva foto</b></div>'+
