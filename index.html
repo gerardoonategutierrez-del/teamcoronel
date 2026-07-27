@@ -96,6 +96,11 @@ section{padding:5rem 1.5rem}
 .lightbox.open{display:flex}
 .lightbox img{max-width:95vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.8)}
 .lightbox-close{position:fixed;top:1rem;right:1.25rem;color:#fff;font-size:2rem;cursor:pointer;line-height:1;opacity:.8}
+.lightbox-arrow{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:1001}
+.lightbox-arrow:hover{background:rgba(255,255,255,.2)}
+.lightbox-prev{left:1rem}
+.lightbox-next{right:1rem}
+@media(max-width:640px){.lightbox-arrow{width:38px;height:38px;font-size:.9rem}.lightbox-prev{left:.5rem}.lightbox-next{right:.5rem}}
 .lightbox-close:hover{opacity:1}
 .noticia-body{padding:1.25rem}
 .noticia-fecha{font-size:.62rem;color:#0ea5e9;font-weight:700;letter-spacing:1.5px;margin-bottom:.4rem;text-transform:uppercase}
@@ -103,7 +108,7 @@ section{padding:5rem 1.5rem}
 .noticia-texto{font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.65}
 .galeria-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
 .gal-item{position:relative;overflow:hidden;border-radius:10px;cursor:pointer}
-.gal-item img{width:100%;height:100%;object-fit:cover;transition:transform .35s}
+.gal-item img{width:100%;height:100%;object-fit:cover;transition:transform .35s;cursor:zoom-in}
 .gal-item:hover img{transform:scale(1.06)}
 .gal-item.big{grid-column:span 2;grid-row:span 2;aspect-ratio:4/3}
 .gal-item:not(.big){aspect-ratio:1}
@@ -112,7 +117,7 @@ section{padding:5rem 1.5rem}
 .dep-carousel::-webkit-scrollbar{display:none}
 .dep-card{flex:0 0 200px;min-width:200px;background:#0f1e3a;border:1px solid rgba(37,99,235,.12);border-radius:14px;overflow:hidden;transition:transform .25s,border-color .25s;text-align:center}
 .dep-card:hover{transform:translateY(-5px);border-color:rgba(14,165,233,.35)}
-.dep-foto{width:100%;height:240px;object-fit:cover;object-position:top}
+.dep-foto{width:100%;height:240px;object-fit:cover;object-position:top;cursor:zoom-in}
 .dep-body{padding:.9rem}
 .dep-nombre{font-size:.85rem;font-weight:800;margin-bottom:.3rem;line-height:1.3}
 .dep-cat{display:inline-block;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.25);border-radius:8px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#0ea5e9;letter-spacing:1px;margin-bottom:.45rem}
@@ -811,7 +816,7 @@ async function loadContent(){
         var g=document.getElementById("galeria-grid");
         g.innerHTML=data.map(function(row,i){
           var big=i===0?'big':''
-          return '<div class="gal-item '+big+'"><img src="'+optimizarImg(row[0],500)+'" loading="lazy" alt="'+row[1]+'"></div>';
+          return '<div class="gal-item '+big+'"><img src="'+optimizarImg(row[0],500)+'" loading="lazy" alt="'+row[1]+'" onclick="openLightbox(\''+row[0]+'\')"></div>';
         }).join("");
       }
     }
@@ -822,8 +827,18 @@ async function loadContent(){
       if(data.length){
         var g=document.getElementById("dep-carousel");
         g.innerHTML=data.map(function(row){
+          var fotos=[row[3],row[5],row[6],row[7]];
+          var destIdx=(parseInt(row[8])||1)-1;
+          if(destIdx<0||destIdx>3||!fotos[destIdx]) destIdx=fotos.findIndex(Boolean);
+          var fotoPrincipal=destIdx>-1?fotos[destIdx]:'';
+          // El carrusel empieza en la foto principal y sigue con las demás que existan
+          var ordenCarrusel=fotos.filter(Boolean);
+          if(destIdx>-1){
+            ordenCarrusel=[fotoPrincipal].concat(fotos.filter(function(f,i){return f&&i!==destIdx;}));
+          }
+          var carruselJSON=JSON.stringify(ordenCarrusel).replace(/'/g,"&#39;");
           return '<div class="dep-card">'+
-            (row[3]?'<img class="dep-foto" src="'+optimizarImg(row[3],400)+'" loading="lazy" alt="">':'<div class="dep-foto" style="background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:2rem">&#x1F6FC;</div>')+
+            (fotoPrincipal?'<img class="dep-foto" src="'+optimizarImg(fotoPrincipal,400)+'" loading="lazy" alt="" onclick="abrirCarruselDeportista(\''+carruselJSON+'\')">':'<div class="dep-foto" style="background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:2rem">&#x1F6FC;</div>')+
             '<div class="dep-body">'+
             '<div class="dep-nombre">'+row[0]+'</div>'+
             '<div class="dep-cat">'+row[2]+'</div>'+
@@ -874,12 +889,42 @@ async function loadContent(){
 }
 function openLightbox(src){
   document.getElementById("lightbox-img").src=src;
+  document.getElementById("lightbox-prev").style.display="none";
+  document.getElementById("lightbox-next").style.display="none";
   document.getElementById("lightbox").classList.add("open");
   document.body.style.overflow="hidden";
 }
 function closeLightbox(){
   document.getElementById("lightbox").classList.remove("open");
   document.body.style.overflow="";
+}
+
+// Carrusel de fotos del deportista: se abre igual que el visor normal,
+// pero con flechas para pasar entre las hasta 4 fotos de esa deportista.
+var _depCarrusel={fotos:[],idx:0};
+function abrirCarruselDeportista(fotosJSON){
+  var fotos=JSON.parse(fotosJSON);
+  if(!fotos.length) return;
+  _depCarrusel.fotos=fotos;
+  _depCarrusel.idx=0;
+  document.getElementById("lightbox-img").src=fotos[0];
+  var mostrarFlechas=fotos.length>1;
+  document.getElementById("lightbox-prev").style.display=mostrarFlechas?"flex":"none";
+  document.getElementById("lightbox-next").style.display=mostrarFlechas?"flex":"none";
+  document.getElementById("lightbox").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function carruselSiguiente(e){
+  e.stopPropagation();
+  if(!_depCarrusel.fotos.length) return;
+  _depCarrusel.idx=(_depCarrusel.idx+1)%_depCarrusel.fotos.length;
+  document.getElementById("lightbox-img").src=_depCarrusel.fotos[_depCarrusel.idx];
+}
+function carruselAnterior(e){
+  e.stopPropagation();
+  if(!_depCarrusel.fotos.length) return;
+  _depCarrusel.idx=(_depCarrusel.idx-1+_depCarrusel.fotos.length)%_depCarrusel.fotos.length;
+  document.getElementById("lightbox-img").src=_depCarrusel.fotos[_depCarrusel.idx];
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape")closeLightbox();});
 loadContent();
@@ -933,7 +978,9 @@ loadContent();
 </div>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+  <button class="lightbox-arrow lightbox-prev" id="lightbox-prev" onclick="carruselAnterior(event)" style="display:none">&#10094;</button>
   <img id="lightbox-img" src="" alt="">
+  <button class="lightbox-arrow lightbox-next" id="lightbox-next" onclick="carruselSiguiente(event)" style="display:none">&#10095;</button>
 </div>
 </body>
 </html>
