@@ -265,16 +265,18 @@ function _cargarCropperJS(){
 
 // Abre el modal de recorte con la foto seleccionada. Devuelve una Promise
 // que entrega el Blob ya recortado/ajustado (o null si el usuario cancela).
-function _abrirCropModal(file){
+// Acepta un File (foto reci\u00e9n seleccionada) o directamente una URL de texto
+// (foto que ya estaba subida, para volver a ajustarla/recortarla).
+function _abrirCropModal(fileOrUrl){
   return new Promise(async function(resolve){
     _cropResolver=resolve;
     try{ await _cargarCropperJS(); }
-    catch(e){ toast("No se pudo cargar el editor de fotos, se sube la original",false); resolve(file); return; }
+    catch(e){ toast("No se pudo cargar el editor de fotos, se sube la original",false); resolve(fileOrUrl); return; }
 
-    var reader=new FileReader();
-    reader.onload=function(ev){
+    function iniciarCropper(srcImagen, esUrlExterna){
       var img=document.getElementById("crop-img");
-      img.src=ev.target.result;
+      if(esUrlExterna) img.crossOrigin="anonymous";
+      img.src=srcImagen;
       document.getElementById("cropm").classList.add("op");
 
       if(_cropper){ _cropper.destroy(); _cropper=null; }
@@ -295,8 +297,17 @@ function _abrirCropModal(file){
           if(_cropper) _cropper.zoomTo(parseFloat(zoomEl.value));
         };
       };
-    };
-    reader.readAsDataURL(file);
+    }
+
+    if(typeof fileOrUrl==="string"){
+      // Es una foto ya subida: se carga directo desde su URL
+      iniciarCropper(fileOrUrl, true);
+      return;
+    }
+
+    var reader=new FileReader();
+    reader.onload=function(ev){ iniciarCropper(ev.target.result, false); };
+    reader.readAsDataURL(fileOrUrl);
   });
 }
 
@@ -429,8 +440,22 @@ async function upEdit(input,fieldIdx){
     file=recortada;
   }
 
+  await _subirBlobEditFoto(file, fieldIdx);
+}
+
+// Permite volver a recortar/hacer zoom en una foto que YA está subida
+// (sin necesidad de elegir un archivo nuevo desde el dispositivo).
+async function reajustarFotoEdit(fieldIdx){
+  var urlActual=document.getElementById("ef"+fieldIdx).value;
+  if(!urlActual){ toast("Esta foto est\u00e1 vac\u00eda",false); return; }
+  var recortada=await _abrirCropModal(urlActual);
+  if(!recortada) return; // el usuario canceló el recorte
+  await _subirBlobEditFoto(recortada, fieldIdx);
+}
+
+async function _subirBlobEditFoto(fileOrBlob, fieldIdx){
   var up=document.getElementById("upE"+fieldIdx);if(up)up.style.display="block";
-  var fd=new FormData();fd.append("file",file);fd.append("upload_preset",PRESET);
+  var fd=new FormData();fd.append("file",fileOrBlob);fd.append("upload_preset",PRESET);
   try{
     var r=await fetch("https://api.cloudinary.com/v1_1/"+CLOUD+"/image/upload",{method:"POST",body:fd});
     var d=await r.json();
@@ -438,7 +463,7 @@ async function upEdit(input,fieldIdx){
       document.getElementById("ef"+fieldIdx).value=d.secure_url;
       var prev=document.getElementById("efPrev"+fieldIdx);
       if(prev){ prev.src=d.secure_url; prev.style.display="block"; }
-      toast("\u2713 Foto subida");
+      toast("\u2713 Foto actualizada");
     }else toast("Error al subir",false);
   }catch(e){toast("Error de conexi\u00f3n",false);}
   if(up)up.style.display="none";
@@ -655,7 +680,10 @@ function edit(store,idx,sheet,reload){
     }
     html+='<div class="efi"><label>'+lbl+'</label>';
     if(isFoto){
-      html+='<img id="efPrev'+i+'" src="'+(val||"")+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;display:'+(val?"block":"none")+';margin-bottom:.4rem">';
+      html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">'
+        +'<img id="efPrev'+i+'" src="'+(val||"")+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;display:'+(val?"block":"none")+'">'
+        +(val?'<button type="button" class="btn bs bo" style="width:auto" onclick="reajustarFotoEdit('+i+')">&#9986; Reajustar</button>':'')
+        +'</div>';
       html+='<div class="ua" style="min-height:50px;margin-bottom:.4rem">'+
         '<input type="file" accept="image/*" onchange="upEdit(this,'+i+')">'+
         '<div class="ual"><b>Subir nueva foto</b></div>'+
