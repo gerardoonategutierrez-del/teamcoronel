@@ -512,13 +512,33 @@ async function setFeatured(idx){
 async function cG(){
   try{
     var d=await getRows("landing_galeria");
+    _STORE.G=d;
     var el=document.getElementById("lG");
     if(!d.length){el.innerHTML='<div class="ie" style="grid-column:1/-1">Sin fotos a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
-      return '<div class="gt"><img src="'+r[0]+'" loading="lazy">'
+      var isFeat=r[3]==="SI";
+      return '<div class="gt">'+(isFeat?'<div style="position:absolute;top:.25rem;left:.25rem;background:rgba(245,158,11,.95);color:#111827;font-size:.6rem;font-weight:800;padding:.1rem .4rem;border-radius:8px;z-index:2">&#9733; DESTACADA</div>':'')
+        +'<img src="'+r[0]+'" loading="lazy">'
+        +(isFeat?'':'<button class="gd" style="left:.25rem;right:auto;background:rgba(245,158,11,.9)" onclick="setFeaturedGaleria('+i+')" title="Destacar">&#9733;</button>')
         +'<button class="gd" onclick="del(\'landing_galeria\','+i+',cG)">\u2715</button></div>';
     }).join("");
   }catch(e){}
+}
+
+async function setFeaturedGaleria(idx){
+  var rows=_STORE.G||[];
+  var prevIdx=rows.findIndex(function(r){return r[3]==="SI";});
+  toast("Actualizando...");
+  try{
+    if(prevIdx>-1 && prevIdx!==idx){
+      var prevRow=rows[prevIdx].slice(0,3);prevRow[3]="";
+      await updRow("landing_galeria",prevIdx,prevRow);
+    }
+    var newRow=rows[idx].slice(0,3);newRow[3]="SI";
+    await updRow("landing_galeria",idx,newRow);
+    toast("\u2713 Foto destacada");
+    setTimeout(cG,900);
+  }catch(e){toast("Error al destacar",false);}
 }
 
 async function cD(){

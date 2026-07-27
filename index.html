@@ -106,12 +106,15 @@ section{padding:5rem 1.5rem}
 .noticia-fecha{font-size:.62rem;color:#0ea5e9;font-weight:700;letter-spacing:1.5px;margin-bottom:.4rem;text-transform:uppercase}
 .noticia-titulo{font-size:.95rem;font-weight:700;margin-bottom:.5rem;line-height:1.4}
 .noticia-texto{font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.65}
-.galeria-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
-.gal-item{position:relative;overflow:hidden;border-radius:10px;cursor:pointer}
-.gal-item img{width:100%;height:100%;object-fit:cover;transition:transform .35s;cursor:zoom-in}
-.gal-item:hover img{transform:scale(1.06)}
-.gal-item.big{grid-column:span 2;grid-row:span 2;aspect-ratio:4/3}
-.gal-item:not(.big){aspect-ratio:1}
+.gal-featured{margin-bottom:1.75rem;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3)}
+.gal-featured img{width:100%;aspect-ratio:21/9;object-fit:cover;display:block;cursor:zoom-in}
+.gal-carousel-wrap{position:relative}
+.gal-carousel{display:flex;gap:1.25rem;overflow-x:auto;scroll-behavior:smooth;padding-bottom:.5rem;scrollbar-width:none;-ms-overflow-style:none}
+.gal-carousel::-webkit-scrollbar{display:none}
+.gal-carousel-item{flex:0 0 220px;height:220px;border-radius:12px;overflow:hidden;cursor:pointer}
+.gal-carousel-item img{width:100%;height:100%;object-fit:cover;transition:transform .35s;cursor:zoom-in}
+.gal-carousel-item:hover img{transform:scale(1.06)}
+@media(max-width:720px){.gal-featured img{aspect-ratio:16/9}.gal-carousel-item{flex:0 0 160px;height:160px}}
 .dep-carousel-wrap{position:relative}
 .dep-carousel{display:flex;gap:1.1rem;overflow-x:auto;scroll-behavior:smooth;padding-bottom:1rem;scrollbar-width:none;-ms-overflow-style:none}
 .dep-carousel::-webkit-scrollbar{display:none}
@@ -179,8 +182,6 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
 .nav-links{display:none}
 .glow-title{font-size:2rem;letter-spacing:3px}
 .hero-frase{font-size:1.1rem}
-.galeria-grid{grid-template-columns:repeat(2,1fr)}
-.gal-item.big{grid-column:span 1;grid-row:span 1;aspect-ratio:1}
 .form-grid{grid-template-columns:1fr}
 .footer-inner{flex-direction:column;text-align:center}
 .foot-right{text-align:center}
@@ -234,7 +235,12 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
 <section class="s-dark" id="galeria">
   <div class="container">
     <div class="sec-head"><div class="sec-tag">Galería</div><div class="sec-title">MOMENTOS DEL EQUIPO</div><div class="sec-sub">Entrenamiento, competencia y vida en el club</div></div>
-    <div class="galeria-grid" id="galeria-grid"></div>
+    <div class="gal-featured" id="gal-featured"></div>
+    <div class="gal-carousel-wrap">
+      <button class="carousel-btn prev" onclick="scrollGaleria(-1)">&#8592;</button>
+      <div class="gal-carousel" id="gal-carousel"></div>
+      <button class="carousel-btn next" onclick="scrollGaleria(1)">&#8594;</button>
+    </div>
   </div>
 </section>
 <section class="s-acc" id="deportistas">
@@ -258,6 +264,7 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
   <div class="container">
     <div class="sec-head"><div class="sec-tag">Sponsors</div><div class="sec-title">NUESTROS PATROCINADORES</div><div class="sec-sub">Empresas que creen en el deporte regional</div></div>
     <div class="sponsors-grid" id="sponsors-grid"></div>
+  </div>
 </section>
 <section class="s-mid" id="postulacion">
   <div class="container">
@@ -702,6 +709,9 @@ function scrollCar(dir){
 function scrollNoticias(dir){
   document.getElementById("noticias-grid").scrollBy({left:dir*330,behavior:"smooth"});
 }
+function scrollGaleria(dir){
+  document.getElementById("gal-carousel").scrollBy({left:dir*245,behavior:"smooth"});
+}
 function parseFechaNoticia(str){
   if(!str) return null;
   var s=String(str).trim();
@@ -813,10 +823,23 @@ async function loadContent(){
     if(Array.isArray(rG)&&rG.length){
       var data=rG.filter(function(r){return r[0];});
       if(data.length){
-        var g=document.getElementById("galeria-grid");
-        g.innerHTML=data.map(function(row,i){
-          var big=i===0?'big':''
-          return '<div class="gal-item '+big+'"><img src="'+optimizarImg(row[0],500)+'" loading="lazy" alt="'+row[1]+'" onclick="openLightbox(\''+row[0]+'\')"></div>';
+        var manualIdx=data.findIndex(function(r){return r[3]==="SI";});
+        var ordered;
+        if(manualIdx>-1){
+          // Hay una foto marcada manualmente como destacada
+          var feat=data[manualIdx];
+          var rest=data.slice(0,manualIdx).concat(data.slice(manualIdx+1));
+          ordered=[feat].concat(rest);
+        }else{
+          // Sin marca manual: se asume que la última foto cargada es la más reciente
+          ordered=data.slice().reverse();
+        }
+
+        document.getElementById("gal-featured").innerHTML=
+          '<img src="'+optimizarImg(ordered[0][0],1200)+'" alt="'+(ordered[0][1]||"")+'" onclick="openLightbox(\''+ordered[0][0]+'\')">';
+
+        document.getElementById("gal-carousel").innerHTML=ordered.slice(1).map(function(row){
+          return '<div class="gal-carousel-item"><img src="'+optimizarImg(row[0],400)+'" loading="lazy" alt="'+(row[1]||"")+'" onclick="openLightbox(\''+row[0]+'\')"></div>';
         }).join("");
       }
     }
