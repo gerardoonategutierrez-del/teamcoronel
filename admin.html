@@ -105,6 +105,7 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <div class="tab" onclick="tab('d')">&#x1F6FC; Deportistas</div>
 <div class="tab" onclick="tab('t')">&#128101; Staff</div>
 <div class="tab" onclick="tab('sp')">&#11088; Sponsors</div>
+<div class="tab" onclick="tab('cert')">&#128100; Certificados</div>
 </div>
 <div class="tp on" id="tp-n">
 <div class="fs"><h3>+ Nueva Noticia</h3>
@@ -166,7 +167,18 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <img class="uap" id="psp3"></div><input type="hidden" id="sp3"></div></div>
 <button class="btn" onclick="add('landing_sponsors',['sp0','sp1','sp2','sp3'],cSP)">Agregar</button>
 </div><div id="lSP"><div class="ie">Cargando...</div></div></div>
-</div></div>
+</div>
+
+<div class="tp" id="tp-cert">
+<div class="fs">
+  <h3>Deportistas con cuenta para certificado</h3>
+  <p style="font-size:.72rem;color:#6b7280;margin-top:.2rem;margin-bottom:.85rem">
+    Deportistas que crearon su contraseña para descargar el certificado desde la landing, cuántos han descargado, y cuándo fue la última vez.
+  </p>
+  <div id="lCert"><div class="ie">Cargando...</div></div>
+</div>
+</div>
+</div>
 <div class="cropm" id="cropm">
   <div class="cropc">
     <h3>Ajustar foto</h3>
@@ -210,7 +222,7 @@ function go(){
 function out(){window.location.href="sistema/sistema.html";}
 
 function tab(id){
-  var map={n:"noticias",g:"galeria",d:"deportistas",t:"tecnico",sp:"sponsors"};
+  var map={n:"noticias",g:"galeria",d:"deportistas",t:"tecnico",sp:"sponsors",cert:"certificados"};
   var name=map[id];
   document.querySelectorAll(".tab").forEach(function(t,i){
     var labels=["noticias","galer","deporti","staff","sponsor"];
@@ -668,7 +680,54 @@ async function cVisitas(){
   }
 }
 
-function all(){cN();cG();cD();cT();cSP();cVisitas();}
+async function cCert(){
+  var el=document.getElementById("lCert");
+  try{
+    var usuarios=await getRows("usuarios"); // [rut, hash, depId, depNombre, fechaRegistro]
+    var certs=await getRows("certificados_emitidos"); // [numero, depId, depNombre, fechaHora]
+
+    if(!usuarios.length){ el.innerHTML='<div class="ie">Todav\u00eda nadie ha creado su cuenta</div>'; return; }
+
+    function parseFechaHora(f){
+      // admite "DD/MM/AAAA, HH:MM:SS" o similar devuelto por toLocaleString
+      var m=(f||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if(!m) return 0;
+      return new Date(m[3],m[2]-1,m[1]).getTime();
+    }
+
+    var filas=usuarios.map(function(u){
+      var depId=u[2];
+      var certsDelDep=certs.filter(function(c){ return String(c[1])===String(depId); });
+      var ultima=null, ultimaTs=-1;
+      certsDelDep.forEach(function(c){
+        var ts=parseFechaHora(c[3]);
+        if(ts>ultimaTs){ ultimaTs=ts; ultima=c[3]; }
+      });
+      return {
+        nombre: u[3]||"(sin nombre)",
+        fechaRegistro: u[4]||"\u2014",
+        cantidad: certsDelDep.length,
+        ultima: ultima||"\u2014"
+      };
+    });
+
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+      +'<thead><tr style="text-align:left;border-bottom:1px solid #374151;color:#9ca3af;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">'
+      +'<th style="padding:.5rem .4rem">Deportista</th><th style="padding:.5rem .4rem">Fecha de registro</th>'
+      +'<th style="padding:.5rem .4rem">Certificados descargados</th><th style="padding:.5rem .4rem">\u00daltima descarga</th></tr></thead><tbody>'
+      +filas.map(function(f){
+        return '<tr style="border-bottom:1px solid #1f2937">'
+          +'<td style="padding:.55rem .4rem;font-weight:600">'+f.nombre+'</td>'
+          +'<td style="padding:.55rem .4rem;color:#9ca3af">'+f.fechaRegistro+'</td>'
+          +'<td style="padding:.55rem .4rem"><span style="background:rgba(59,130,246,.15);color:#60a5fa;padding:.15rem .55rem;border-radius:10px;font-weight:700">'+f.cantidad+'</span></td>'
+          +'<td style="padding:.55rem .4rem;color:#9ca3af">'+f.ultima+'</td>'
+          +'</tr>';
+      }).join("")
+      +'</tbody></table>';
+  }catch(e){ el.innerHTML='<div class="ie">Error al cargar</div>'; }
+}
+
+function all(){cN();cG();cD();cT();cSP();cVisitas();cCert();}
 </script>
 </body>
 </html>
