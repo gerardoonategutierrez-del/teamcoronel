@@ -688,9 +688,26 @@ async function cCert(){
 
     if(!usuarios.length){ el.innerHTML='<div class="ie">Todav\u00eda nadie ha creado su cuenta</div>'; return; }
 
+    // Las fechas a veces llegan como fecha/hora completa en formato ISO
+    // (ej: "2026-07-20T04:00:00.000Z") porque Google Sheets las guarda como
+    // celdas de tipo fecha. Esto las normaliza a DD/MM/AAAA para mostrarlas.
+    function normalizarFecha(v){
+      if(!v) return v;
+      v=String(v);
+      if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(v)) return v; // ya viene en DD/MM/AAAA
+      if(/^\d{4}-\d{2}-\d{2}/.test(v)){
+        var d=new Date(v);
+        if(!isNaN(d.getTime())){
+          return (d.getUTCDate()<10?"0":"")+d.getUTCDate()+"/"+((d.getUTCMonth()+1)<10?"0":"")+(d.getUTCMonth()+1)+"/"+d.getUTCFullYear();
+        }
+      }
+      return v;
+    }
+
     function parseFechaHora(f){
-      // admite "DD/MM/AAAA, HH:MM:SS" o similar devuelto por toLocaleString
-      var m=(f||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      // admite "DD/MM/AAAA, HH:MM:SS" o formato ISO
+      var norm=normalizarFecha(f);
+      var m=(norm||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if(!m) return 0;
       return new Date(m[3],m[2]-1,m[1]).getTime();
     }
@@ -705,25 +722,26 @@ async function cCert(){
       });
       return {
         nombre: u[3]||"(sin nombre)",
-        fechaRegistro: u[4]||"\u2014",
+        fechaRegistro: normalizarFecha(u[4])||"\u2014",
         cantidad: certsDelDep.length,
-        ultima: ultima||"\u2014"
+        ultima: normalizarFecha(ultima)||"\u2014"
       };
     });
 
-    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+    el.innerHTML='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+      +'<table style="width:100%;min-width:560px;border-collapse:collapse;font-size:.8rem">'
       +'<thead><tr style="text-align:left;border-bottom:1px solid #374151;color:#9ca3af;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">'
-      +'<th style="padding:.5rem .4rem">Deportista</th><th style="padding:.5rem .4rem">Fecha de registro</th>'
-      +'<th style="padding:.5rem .4rem">Certificados descargados</th><th style="padding:.5rem .4rem">\u00daltima descarga</th></tr></thead><tbody>'
+      +'<th style="padding:.5rem .4rem;white-space:nowrap">Deportista</th><th style="padding:.5rem .4rem;white-space:nowrap">Fecha de registro</th>'
+      +'<th style="padding:.5rem .4rem;white-space:nowrap">Certificados descargados</th><th style="padding:.5rem .4rem;white-space:nowrap">\u00daltima descarga</th></tr></thead><tbody>'
       +filas.map(function(f){
         return '<tr style="border-bottom:1px solid #1f2937">'
-          +'<td style="padding:.55rem .4rem;font-weight:600">'+f.nombre+'</td>'
-          +'<td style="padding:.55rem .4rem;color:#9ca3af">'+f.fechaRegistro+'</td>'
-          +'<td style="padding:.55rem .4rem"><span style="background:rgba(59,130,246,.15);color:#60a5fa;padding:.15rem .55rem;border-radius:10px;font-weight:700">'+f.cantidad+'</span></td>'
-          +'<td style="padding:.55rem .4rem;color:#9ca3af">'+f.ultima+'</td>'
+          +'<td style="padding:.55rem .4rem;font-weight:600;white-space:nowrap">'+f.nombre+'</td>'
+          +'<td style="padding:.55rem .4rem;color:#9ca3af;white-space:nowrap">'+f.fechaRegistro+'</td>'
+          +'<td style="padding:.55rem .4rem;white-space:nowrap"><span style="background:rgba(59,130,246,.15);color:#60a5fa;padding:.15rem .55rem;border-radius:10px;font-weight:700">'+f.cantidad+'</span></td>'
+          +'<td style="padding:.55rem .4rem;color:#9ca3af;white-space:nowrap">'+f.ultima+'</td>'
           +'</tr>';
       }).join("")
-      +'</tbody></table>';
+      +'</tbody></table></div>';
   }catch(e){ el.innerHTML='<div class="ie">Error al cargar</div>'; }
 }
 
