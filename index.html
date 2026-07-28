@@ -925,9 +925,34 @@ function closeLightbox(){
 // Carrusel de fotos del deportista: se abre igual que el visor normal,
 // pero con flechas para pasar entre las hasta 4 fotos de esa deportista.
 var _depCarrusel={fotos:[],idx:0};
+var _swipeConectado=false;
+function _conectarSwipeCarrusel(){
+  if(_swipeConectado) return;
+  var lb=document.getElementById("lightbox");
+  if(!lb) return;
+  _swipeConectado=true;
+  var touchStartX=null, touchStartY=null;
+  lb.addEventListener("touchstart",function(e){
+    if(!_depCarrusel.fotos || _depCarrusel.fotos.length<2) return;
+    touchStartX=e.changedTouches[0].screenX;
+    touchStartY=e.changedTouches[0].screenY;
+  },{passive:true});
+  lb.addEventListener("touchend",function(e){
+    if(touchStartX===null || !_depCarrusel.fotos || _depCarrusel.fotos.length<2) return;
+    var diffX=e.changedTouches[0].screenX-touchStartX;
+    var diffY=e.changedTouches[0].screenY-touchStartY;
+    touchStartX=null;
+    if(Math.abs(diffX)>45 && Math.abs(diffX)>Math.abs(diffY)){
+      var fakeEvent={stopPropagation:function(){}};
+      if(diffX<0) carruselSiguiente(fakeEvent); else carruselAnterior(fakeEvent);
+    }
+  },{passive:true});
+}
+
 function abrirCarruselDeportista(fotosJSON){
   var fotos=JSON.parse(fotosJSON);
   if(!fotos.length) return;
+  _conectarSwipeCarrusel();
   _depCarrusel.fotos=fotos;
   _depCarrusel.idx=0;
   document.getElementById("lightbox-img").src=fotos[0];
@@ -950,28 +975,6 @@ function carruselAnterior(e){
   document.getElementById("lightbox-img").src=_depCarrusel.fotos[_depCarrusel.idx];
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape")closeLightbox();});
-
-// Deslizar con el dedo (swipe) para navegar el carrusel de fotos en celular,
-// sin afectar el comportamiento de las flechas en computador.
-(function(){
-  var touchStartX=null, touchStartY=null;
-  var lb=document.getElementById("lightbox");
-  lb.addEventListener("touchstart",function(e){
-    if(!_depCarrusel.fotos || _depCarrusel.fotos.length<2) return;
-    touchStartX=e.changedTouches[0].screenX;
-    touchStartY=e.changedTouches[0].screenY;
-  },{passive:true});
-  lb.addEventListener("touchend",function(e){
-    if(touchStartX===null || !_depCarrusel.fotos || _depCarrusel.fotos.length<2) return;
-    var diffX=e.changedTouches[0].screenX-touchStartX;
-    var diffY=e.changedTouches[0].screenY-touchStartY;
-    touchStartX=null;
-    if(Math.abs(diffX)>45 && Math.abs(diffX)>Math.abs(diffY)){
-      var fakeEvent={stopPropagation:function(){}};
-      if(diffX<0) carruselSiguiente(fakeEvent); else carruselAnterior(fakeEvent);
-    }
-  },{passive:true});
-})();
 loadContent();
 
 // Registro silencioso de visitas (solo se ve en el panel admin)
