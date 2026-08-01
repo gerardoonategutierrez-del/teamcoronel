@@ -1120,7 +1120,7 @@ body {
         <div style="font-weight:600;font-size:.85rem;color:var(--t1);margin-bottom:.4rem">Consulta especializada para el coach</div>
         <div style="font-size:.72rem;max-width:380px;line-height:1.6">
           Patín carrera de alto rendimiento, entrenamiento en bicicleta para fondo, fuerza/potencia en deportistas jóvenes
-          y movilidad para dolor lumbar y de rodillas. Elegí un deportista arriba para respuestas con sus datos reales.
+          y movilidad para dolor lumbar y de rodillas. Elegí un deportista o un grupo completo arriba para respuestas con sus datos reales.
         </div>
         <div class="ia-suggestions">
           <div class="ia-chip" onclick="iaSugerencia(this)">Plan de fondo en bici pre-temporada</div>
@@ -4441,6 +4441,7 @@ function getBestTimesHTML(id, vel) {
 // ═══════════════════════════════
 var iaHistory = [];
 var iaDepId = null;
+var iaGrupoId = null;
 var iaFirstMsg = true;
 
 var IA_SYSTEM_PROMPT = 'Eres el Asistente de Entrenamiento IA de Team Coronel, club de patín carrera (inline speed skating) en Coronel, Biobío, Chile. Hablas exclusivamente con el coach del club, nunca directamente con deportistas.\n\n'
@@ -4459,20 +4460,51 @@ function abrirAsistenteIA() {
 function iaPoblarSelectorDep() {
   var sel = document.getElementById('ia-dep-select');
   if(sel.dataset.filled) return;
+
+  var gruposPresentes = [];
+  ATHLETES.forEach(function(a){
+    if(a.grupo && gruposPresentes.indexOf(a.grupo) === -1) gruposPresentes.push(a.grupo);
+  });
+
+  if(gruposPresentes.length) {
+    var ogGrupos = document.createElement('optgroup');
+    ogGrupos.label = 'Grupo completo';
+    gruposPresentes.forEach(function(g){
+      var cant = ATHLETES.filter(function(a){ return a.grupo === g; }).length;
+      var opt = document.createElement('option');
+      opt.value = 'g:' + g;
+      opt.textContent = grupoLabel(g) + ' (' + nivelDisplay(g) + ') · ' + cant + (cant===1 ? ' deportista' : ' deportistas');
+      ogGrupos.appendChild(opt);
+    });
+    sel.appendChild(ogGrupos);
+  }
+
+  var ogDep = document.createElement('optgroup');
+  ogDep.label = 'Deportista individual';
   var ordenados = ATHLETES.slice().sort(function(a,b){ return (a.ap+a.nm).localeCompare(b.ap+b.nm); });
   ordenados.forEach(function(a){
     var opt = document.createElement('option');
     opt.value = a.id;
     opt.textContent = a.ap + ' ' + a.nm;
-    sel.appendChild(opt);
+    ogDep.appendChild(opt);
   });
+  sel.appendChild(ogDep);
+
   sel.dataset.filled = '1';
 }
 
 function iaSeleccionarDep(val) {
-  iaDepId = val ? parseInt(val) : null;
+  iaDepId = null;
+  iaGrupoId = null;
   var badge = document.getElementById('ia-ctx-badge');
-  if(iaDepId) {
+
+  if(val && val.indexOf('g:') === 0) {
+    iaGrupoId = val.slice(2);
+    var cant = ATHLETES.filter(function(a){ return a.grupo === iaGrupoId; }).length;
+    badge.style.display = 'inline-block';
+    badge.textContent = '📋 Usando datos de ' + grupoLabel(iaGrupoId) + ' (' + cant + ' deportistas)';
+  } else if(val) {
+    iaDepId = parseInt(val);
     var a = ATHLETES.find(function(x){ return x.id===iaDepId; });
     badge.style.display = 'inline-block';
     badge.textContent = '📋 Usando datos de ' + (a ? a.ap+' '+a.nm : '');
@@ -4522,6 +4554,32 @@ function iaBuildContext(id) {
   return lines.join('\n');
 }
 
+function iaBuildGroupContext(grupo) {
+  var miembros = ATHLETES.filter(function(a){ return a.grupo === grupo; });
+  if(!miembros.length) return '';
+
+  var lines = [];
+  lines.push('Grupo de entrenamiento: ' + grupoLabel(grupo) + ' (' + nivelDisplay(grupo) + ') — ' + miembros.length + ' deportistas');
+  lines.push('');
+  lines.push('Listado del grupo:');
+
+  miembros.forEach(function(a){
+    var ex = athletesExtra[a.id] || athletesExtra[String(a.id)] || {};
+    var hist = (ex.historial || []).slice().reverse();
+    var ultimoTiempo = hist.filter(function(h){ return h.tipo === 'tiempo'; })[0];
+    var partes = [];
+    partes.push(a.ap + ' ' + a.nm + ' (' + (a.cat || nivelDisplay(a.grupo)) + ')');
+    if(a.lesion) partes.push('⚠ lesión: ' + a.lesion);
+    if(ultimoTiempo) partes.push('último tiempo (' + ultimoTiempo.fecha + '): ' + ultimoTiempo.nota);
+    lines.push('- ' + partes.join(' · '));
+  });
+
+  lines.push('');
+  lines.push('Dá recomendaciones pensadas para TODO el grupo como bloque de entrenamiento común (mismo horario, mismo lugar), y señalá aparte si algún deportista puntual necesita una adaptación individual dentro de ese mismo plan (por ejemplo por una lesión).');
+
+  return lines.join('\n');
+}
+
 function iaAutoGrow(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 110) + 'px';
@@ -4536,7 +4594,7 @@ function iaSugerencia(el) {
   iaEnviar();
 }
 
-function iaAppendMsg(role, text) {
+function iaAppendMsg(role, text, depIdParaGuardar, grupoIdParaGuardar) {
   if(iaFirstMsg) {
     var empty = document.getElementById('ia-empty');
     if(empty) empty.remove();
@@ -4553,9 +4611,63 @@ function iaAppendMsg(role, text) {
   bubble.textContent = text;
   wrap.appendChild(label);
   wrap.appendChild(bubble);
+
+  if(role !== 'user') {
+    var actions = document.createElement('div');
+    actions.style.cssText = 'margin-top:.4rem;display:flex;gap:.4rem';
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-secondary btn-sm';
+
+    if(grupoIdParaGuardar) {
+      var cantGrupo = ATHLETES.filter(function(a){ return a.grupo === grupoIdParaGuardar; }).length;
+      saveBtn.textContent = '💾 Guardar en fichas de ' + grupoLabel(grupoIdParaGuardar) + ' (' + cantGrupo + ')';
+      saveBtn.onclick = function(){ iaGuardarEnFichaGrupo(grupoIdParaGuardar, text, saveBtn); };
+    } else if(depIdParaGuardar) {
+      var a = ATHLETES.find(function(x){ return x.id===depIdParaGuardar; });
+      saveBtn.textContent = '💾 Guardar en ficha de ' + (a ? a.ap+' '+a.nm : 'deportista');
+      saveBtn.onclick = function(){ iaGuardarEnFicha(depIdParaGuardar, text, saveBtn); };
+    } else {
+      saveBtn.textContent = '💾 Guardar (elegí un deportista o grupo)';
+      saveBtn.disabled = true;
+    }
+
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+  }
+
   body.appendChild(wrap);
   body.scrollTop = body.scrollHeight;
   return wrap;
+}
+
+function iaGuardarEnFicha(depId, texto, btn) {
+  if(!depId) return;
+  if(!athletesExtra[depId]) athletesExtra[depId] = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
+  if(!Array.isArray(athletesExtra[depId].historial)) athletesExtra[depId].historial = [];
+  var hoy = new Date();
+  var f = (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
+  athletesExtra[depId].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA\n' + texto });
+  saveData();
+  btn.textContent = '✓ Guardado en ficha';
+  btn.disabled = true;
+  toast('Guardado en la ficha del deportista ✓');
+}
+
+function iaGuardarEnFichaGrupo(grupo, texto, btn) {
+  if(!grupo) return;
+  var miembros = ATHLETES.filter(function(a){ return a.grupo === grupo; });
+  if(!miembros.length) return;
+  var hoy = new Date();
+  var f = (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
+  miembros.forEach(function(a){
+    if(!athletesExtra[a.id]) athletesExtra[a.id] = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
+    if(!Array.isArray(athletesExtra[a.id].historial)) athletesExtra[a.id].historial = [];
+    athletesExtra[a.id].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA (plan de grupo: ' + grupoLabel(grupo) + ')\n' + texto });
+  });
+  saveData();
+  btn.textContent = '✓ Guardado en ' + miembros.length + ' fichas';
+  btn.disabled = true;
+  toast('Plan guardado en las fichas del grupo (' + miembros.length + ' deportistas) ✓');
 }
 
 function iaAppendLoader() {
@@ -4580,7 +4692,7 @@ function iaNuevoChat() {
   body.innerHTML = '<div class="ia-empty" id="ia-empty">'
     + '<div class="ia-empty-icon">⛸️</div>'
     + '<div style="font-weight:600;font-size:.85rem;color:var(--t1);margin-bottom:.4rem">Consulta especializada para el coach</div>'
-    + '<div style="font-size:.72rem;max-width:380px;line-height:1.6">Patín carrera de alto rendimiento, entrenamiento en bicicleta para fondo, fuerza/potencia en deportistas jóvenes y movilidad para dolor lumbar y de rodillas. Elegí un deportista arriba para respuestas con sus datos reales.</div>'
+    + '<div style="font-size:.72rem;max-width:380px;line-height:1.6">Patín carrera de alto rendimiento, entrenamiento en bicicleta para fondo, fuerza/potencia en deportistas jóvenes y movilidad para dolor lumbar y de rodillas. Elegí un deportista o un grupo completo arriba para respuestas con sus datos reales.</div>'
     + '<div class="ia-suggestions">'
     + '<div class="ia-chip" onclick="iaSugerencia(this)">Plan de fondo en bici pre-temporada</div>'
     + '<div class="ia-chip" onclick="iaSugerencia(this)">Progresión de fuerza para juvenil</div>'
@@ -4602,13 +4714,16 @@ async function iaEnviar() {
   iaAppendLoader();
 
   try {
-    var contexto = iaDepId ? iaBuildContext(iaDepId) : '';
+    var contexto = iaDepId ? iaBuildContext(iaDepId) : (iaGrupoId ? iaBuildGroupContext(iaGrupoId) : '');
+    var contextoHeader = iaDepId
+      ? '--- CONTEXTO DEL DEPORTISTA SELECCIONADO ---'
+      : (iaGrupoId ? '--- CONTEXTO DEL GRUPO SELECCIONADO ---' : '');
     var transcript = iaHistory.map(function(m){
       return (m.role==='user' ? 'Coach: ' : 'Asistente: ') + m.text;
     }).join('\n\n');
 
     var fullPrompt = IA_SYSTEM_PROMPT
-      + (contexto ? '\n\n--- CONTEXTO DEL DEPORTISTA SELECCIONADO ---\n' + contexto : '')
+      + (contexto ? '\n\n' + contextoHeader + '\n' + contexto : '')
       + (transcript ? '\n\n--- CONVERSACIÓN PREVIA ---\n' + transcript : '')
       + '\n\nCoach: ' + texto + '\nAsistente:';
 
@@ -4628,7 +4743,7 @@ async function iaEnviar() {
     }
 
     var reply = textBlock.text.trim();
-    iaAppendMsg('bot', reply);
+    iaAppendMsg('bot', reply, iaDepId, iaGrupoId);
     iaHistory.push({ role: 'user', text: texto });
     iaHistory.push({ role: 'assistant', text: reply });
 
