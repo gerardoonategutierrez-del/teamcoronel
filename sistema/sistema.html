@@ -669,7 +669,7 @@ body {
   <button class="nav-btn"    id="nb-deportistas"  onclick="show('deportistas',this)"><span class="nav-icon">👥</span>Deportistas</button>
   <button class="nav-btn"    id="nb-control"      onclick="show('control',this)"><span class="nav-icon">📋</span>Control Mensual</button>
   <button class="nav-btn"    id="nb-tiempos"      onclick="show('tiempos',this)"><span class="nav-icon">⏱</span>Tiempos</button>
-  <button class="nav-btn"    id="nb-planes"       onclick="show('planes',this)"><span class="nav-icon">📅</span>Planes de Pista</button>
+  <button class="nav-btn"    id="nb-planes"       onclick="show('planes',this)"><span class="nav-icon">📅</span>Planes de Entrenamientos</button>
   <button class="nav-btn"    id="nb-seguimiento"  onclick="show('seguimiento',this)"><span class="nav-icon">📈</span>Seguimiento</button>
   <button class="nav-btn"    id="nb-antro"        onclick="show('antro',this)"><span class="nav-icon">🔬</span>Antro / Lab</button>
 </nav>
@@ -866,13 +866,14 @@ body {
      SEC: PLANES DE PISTA
 ════════════════════════════ -->
 <section class="sec" id="sec-planes">
-  <div class="page-title">Planes de Pista</div>
-  <div class="page-sub">Ver plan de hoy · Cargar plan semanal</div>
+  <div class="page-title">Planes de Entrenamientos</div>
+  <div class="page-sub">Ver plan de hoy · Cargar plan semanal · Planes del Asistente IA</div>
 
   <div class="tabs">
     <button class="tab on" onclick="switchPlanesTab('ver',this)">📅 Plan de Hoy</button>
     <button class="tab"    onclick="switchPlanesTab('cargar',this)">📥 Cargar Plan</button>
     <button class="tab"    onclick="switchPlanesTab('guardados',this)">📋 Guardados</button>
+    <button class="tab"    onclick="switchPlanesTab('ia',this)">🧠 IA</button>
   </div>
 
   <!-- VER HOY -->
@@ -922,6 +923,15 @@ body {
   <!-- PLANES GUARDADOS -->
   <div id="planes-tab-guardados" style="display:none">
     <div id="planes-guardados-lista"><div class="empty"><div class="empty-icon">📋</div>No hay planes guardados</div></div>
+  </div>
+
+  <!-- PLANES DEL ASISTENTE IA (bicicleta / consultas puntuales, individuales o de grupo) -->
+  <div id="planes-tab-ia" style="display:none">
+    <div style="font-size:.7rem;color:var(--t3);margin-bottom:.75rem">
+      Acá quedan centralizados los planes y respuestas que guardaste desde el 🧠 Asistente de Entrenamiento
+      (individuales o de grupo completo) — en vez de quedar sueltos en cada ficha.
+    </div>
+    <div id="planes-ia-lista"><div class="empty"><div class="empty-icon">🧠</div>Todavía no guardaste ningún plan del Asistente IA</div></div>
   </div>
 </section>
 
@@ -1367,6 +1377,9 @@ var planesDisciplina = {
   }
 };
 var rmData={};
+var planesIA=[]; // Planes/respuestas guardadas desde el Asistente de Entrenamiento IA
+                  // (individuales o de grupo), centralizadas acá en vez de repartidas
+                  // por cada ficha de deportista.
 var weekly={};
 var cmMes='Julio';
 var cmData={};
@@ -1407,7 +1420,7 @@ function _saveDataCore() {
     localStorage.setItem('teamcoronel_2026', JSON.stringify({
       weekly:weekly, rmData:rmData, COMPS:COMPS,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
-      antropometria:ANTROPOMETRIA,
+      antropometria:ANTROPOMETRIA, planesIA:planesIA,
     }));
   } catch(e) { console.warn('save failed',e); }
 }
@@ -2687,7 +2700,7 @@ function eliminarPlanGuardado(sem) {
 
 // PLANES TABS
 function switchPlanesTab(tab, btn) {
-  ['ver','cargar','guardados'].forEach(function(t){
+  ['ver','cargar','guardados','ia'].forEach(function(t){
     var el = document.getElementById('planes-tab-'+t);
     if(el) el.style.display = t===tab ? 'block' : 'none';
   });
@@ -2695,6 +2708,48 @@ function switchPlanesTab(tab, btn) {
   if(btn) btn.classList.add('on');
   if(tab==='guardados') buildPlanesGuardados();
   if(tab==='ver') planHoyInit();
+  if(tab==='ia') buildPlanesIA();
+}
+
+// Escapa texto para insertarlo seguro dentro de innerHTML.
+function escapeHtml(s) {
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// PLANES DEL ASISTENTE IA — centralizados acá (individuales o de grupo)
+function buildPlanesIA() {
+  var el = document.getElementById('planes-ia-lista');
+  if(!el) return;
+  if(!planesIA.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div>Todavía no guardaste ningún plan del Asistente IA</div>';
+    return;
+  }
+  var ordenados = planesIA.slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+  el.innerHTML = ordenados.map(function(p){
+    var destino = p.tipo === 'grupo'
+      ? '👥 ' + escapeHtml(p.grupoLabel || p.grupoKey || 'Grupo')
+      : '🧑 ' + escapeHtml(p.depNombre || 'Deportista');
+    return '<div class="card" style="margin-bottom:.6rem">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.5rem">'
+      + '<div>'
+      + '<div style="font-weight:600;font-size:.8rem">'+destino+'</div>'
+      + '<div style="font-size:.62rem;color:var(--t3);margin-top:.15rem">'+escapeHtml(p.fecha)+'</div>'
+      + '</div>'
+      + '<button class="btn btn-danger btn-sm" onclick="eliminarPlanIA('+p.id+')">✕</button>'
+      + '</div>'
+      + '<div class="plan-dia-text" style="font-size:.78rem;white-space:pre-wrap">'+escapeHtml(p.texto)+'</div>'
+      + '</div>';
+  }).join('');
+}
+
+function eliminarPlanIA(id) {
+  if(!confirm('¿Eliminar este plan guardado?')) return;
+  planesIA = planesIA.filter(function(p){ return p.id !== id; });
+  saveData();
+  buildPlanesIA();
+  toast('Plan eliminado');
 }
 
 // PLAN DE HOY — updated to show AR + INT adjustment
@@ -3519,6 +3574,10 @@ async function _ejecutarSyncToSheets() {
       'PLANES','','','','','','','','','','','','','','','','','',
       JSON.stringify(planesDisciplina),''
     ]);
+    rows.push([
+      'PLANES_IA','','','','','','','','','','','','','','','','','',
+      JSON.stringify(planesIA),''
+    ]);
 
     console.log('[SYNC] Sending '+rows.length+' rows to Sheets...');
     var postResp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec', {
@@ -3589,6 +3648,7 @@ async function syncFromSheets() {
     if(!rows || !rows.length) return false;
 
     var planesRow = null;
+    var planesIARow = null;
     rows.forEach(function(row) {
       if(row[0] === 'ATHLETE') {
         var id = parseInt(row[1]);
@@ -3622,12 +3682,19 @@ async function syncFromSheets() {
         }
       }
       if(row[0] === 'PLANES') planesRow = row;
+      if(row[0] === 'PLANES_IA') planesIARow = row;
     });
 
     if(planesRow) {
       try {
         var planes = JSON.parse(planesRow[18]||'{}');
         if(planes && Object.keys(planes).length) Object.assign(planesDisciplina, planes);
+      } catch(e){}
+    }
+    if(planesIARow) {
+      try {
+        var pIA = JSON.parse(planesIARow[18]||'[]');
+        if(Array.isArray(pIA)) planesIA = pIA;
       } catch(e){}
     }
 
@@ -3646,7 +3713,7 @@ function _saveDataCore() {
     localStorage.setItem('teamcoronel_2026', JSON.stringify({
       weekly:weekly, rmData:rmData, COMPS:COMPS,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
-      antropometria:ANTROPOMETRIA,
+      antropometria:ANTROPOMETRIA, planesIA:planesIA,
     }));
   } catch(e) { console.warn('save failed',e); }
 }
@@ -4638,7 +4705,7 @@ function iaAppendMsg(role, text, depIdParaGuardar, grupoIdParaGuardar) {
 
     if(grupoIdParaGuardar) {
       var cantGrupo = ATHLETES.filter(function(a){ return a.grupo === grupoIdParaGuardar; }).length;
-      saveBtn.textContent = '💾 Guardar en fichas de ' + grupoLabel(grupoIdParaGuardar) + ' (' + cantGrupo + ')';
+      saveBtn.textContent = '💾 Guardar en Planes de Entrenamientos — ' + grupoLabel(grupoIdParaGuardar) + ' (' + cantGrupo + ')';
       saveBtn.onclick = function(){ iaGuardarEnFichaGrupo(grupoIdParaGuardar, text, saveBtn); };
     } else if(depIdParaGuardar) {
       var a = ATHLETES.find(function(x){ return x.id===depIdParaGuardar; });
@@ -4658,34 +4725,54 @@ function iaAppendMsg(role, text, depIdParaGuardar, grupoIdParaGuardar) {
   return wrap;
 }
 
+function _fechaHoyDDMMAAAA() {
+  var hoy = new Date();
+  return (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
+}
+
+// Guarda la respuesta en la ficha del deportista (seguimiento personal)
+// Y ADEMÁS la centraliza en "Planes de Entrenamientos → IA" para tener
+// un solo lugar donde ver todo lo que generó el asistente.
 function iaGuardarEnFicha(depId, texto, btn) {
   if(!depId) return;
+  var f = _fechaHoyDDMMAAAA();
+
   if(!athletesExtra[depId]) athletesExtra[depId] = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
   if(!Array.isArray(athletesExtra[depId].historial)) athletesExtra[depId].historial = [];
-  var hoy = new Date();
-  var f = (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
   athletesExtra[depId].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA\n' + texto });
+
+  var a = ATHLETES.find(function(x){ return x.id === depId; });
+  planesIA.push({
+    id: Date.now(), ts: Date.now(), tipo: 'individual',
+    depId: depId, depNombre: a ? (a.ap+' '+a.nm) : 'Deportista',
+    texto: texto, fecha: f
+  });
+
   saveData();
   btn.textContent = '✓ Guardado en ficha';
   btn.disabled = true;
-  toast('Guardado en la ficha del deportista ✓');
+  toast('Guardado en la ficha del deportista y en Planes de Entrenamientos ✓');
 }
 
+// Guarda la respuesta SOLO en el listado centralizado de "Planes de
+// Entrenamientos → IA" — ya no la duplica en la ficha de cada deportista
+// del grupo (así no queda repartida en N fichas).
 function iaGuardarEnFichaGrupo(grupo, texto, btn) {
   if(!grupo) return;
   var miembros = ATHLETES.filter(function(a){ return a.grupo === grupo; });
   if(!miembros.length) return;
-  var hoy = new Date();
-  var f = (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
-  miembros.forEach(function(a){
-    if(!athletesExtra[a.id]) athletesExtra[a.id] = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
-    if(!Array.isArray(athletesExtra[a.id].historial)) athletesExtra[a.id].historial = [];
-    athletesExtra[a.id].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA (plan de grupo: ' + grupoLabel(grupo) + ')\n' + texto });
+  var f = _fechaHoyDDMMAAAA();
+
+  planesIA.push({
+    id: Date.now(), ts: Date.now(), tipo: 'grupo',
+    grupoKey: grupo, grupoLabel: grupoLabel(grupo) + ' (' + nivelDisplay(grupo) + ')',
+    texto: texto, fecha: f
   });
+
   saveData();
-  btn.textContent = '✓ Guardado en ' + miembros.length + ' fichas';
+  btn.textContent = '✓ Guardado en Planes de Entrenamientos';
   btn.disabled = true;
-  toast('Plan guardado en las fichas del grupo (' + miembros.length + ' deportistas) ✓');
+  toast('Plan guardado en Planes de Entrenamientos → IA (' + miembros.length + ' deportistas) ✓');
 }
 
 function iaAppendLoader() {
