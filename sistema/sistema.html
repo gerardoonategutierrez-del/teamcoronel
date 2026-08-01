@@ -4467,7 +4467,8 @@ var IA_SYSTEM_PROMPT = 'Eres el Asistente de Entrenamiento IA de Team Coronel, c
   + '- Entrenamiento en bicicleta como complemento de fondo/base aeróbica\n'
   + '- Preparación física de fuerza y potencia, adaptada a deportistas JÓVENES en fase de aprendizaje de levantamiento de pesas (progresiones seguras, técnica antes que carga)\n'
   + '- Movilidad y kinesiología aplicada, en particular para dolor lumbar y de rodillas, muy comunes en este deporte por la postura de patinaje\n\n'
-  + 'Responde siempre en español de Chile, de forma directa y práctica, como un preparador físico experimentado hablando con un colega. Si hay contexto de un deportista específico más abajo, usá sus datos reales (tiempos, antropometría, laboratorio, historial) para personalizar la respuesta en vez de dar consejos genéricos. Si hay una lesión o alerta de salud reportada, priorizala y sé conservador: sugerí adaptar la carga, no solo agregar ejercicios nuevos. Sé conciso — respuestas de coach a coach, no ensayos.';
+  + 'Responde siempre en español de Chile, de forma directa y práctica, como un preparador físico experimentado hablando con un colega. Si hay contexto de un deportista específico más abajo, usá sus datos reales (tiempos, antropometría, laboratorio, historial) para personalizar la respuesta en vez de dar consejos genéricos. Si hay una lesión o alerta de salud reportada, priorizala y sé conservador: sugerí adaptar la carga, no solo agregar ejercicios nuevos. '
+  + 'IMPORTANTE — LÍMITE DE EXTENSIÓN: tu respuesta debe caber en no más de 200-250 palabras. Andá directo a lo esencial: bullets cortos, sin preámbulos ni resúmenes finales. Si el pedido requiere más detalle del que entra en ese límite (ej. un plan semanal completo), no lo comprimas de forma que quede inútil: en cambio, entregá primero la parte más importante y terminá preguntando si seguís con el resto en el próximo mensaje.';
 
 function abrirAsistenteIA() {
   iaPoblarSelectorDep();
@@ -4737,7 +4738,7 @@ async function iaEnviar() {
       : (iaGrupoId ? '--- CONTEXTO DEL GRUPO SELECCIONADO ---' : '');
     // Solo los últimos intercambios, para que el prompt no crezca sin
     // límite en conversaciones largas (evita timeouts y respuestas lentas).
-    var transcript = iaHistory.slice(-8).map(function(m){
+    var transcript = iaHistory.slice(-4).map(function(m){
       return (m.role==='user' ? 'Coach: ' : 'Asistente: ') + m.text;
     }).join('\n\n');
 
@@ -4757,7 +4758,11 @@ async function iaEnviar() {
     var textBlock = data.content && data.content.find(function(b){ return b.type==='text'; });
     if(!textBlock) {
       var errMsg = data.error ? (data.error.message || data.error) : (data.type === 'error' ? data.error : JSON.stringify(data).slice(0,200));
-      iaAppendMsg('bot', 'Error al conectar con el asistente (' + errMsg + '). Intentá de nuevo.');
+      var esTimeout = /not yet ready|timed? ?out|processing your request/i.test(String(errMsg));
+      var msgError = esTimeout
+        ? 'El asistente tardó demasiado en responder (la plataforma corta respuestas de más de 30 segundos). Probá con una pregunta más puntual, o pedí el plan por partes (ej. "primero dame la parte de patín, después seguimos con pesas").'
+        : 'Error al conectar con el asistente (' + errMsg + '). Intentá de nuevo.';
+      iaAppendMsg('bot', msgError);
       return;
     }
 
