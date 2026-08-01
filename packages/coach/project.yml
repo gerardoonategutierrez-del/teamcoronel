@@ -9,5 +9,5 @@ packages:
         environment:
           ANTHROPIC_API_KEY: '${ANTHROPIC_API_KEY}'
         limits:
-          timeout: 30000
-          memory: 512
+          timeout: 120000
+          memory: 1024
