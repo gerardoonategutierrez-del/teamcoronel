@@ -730,9 +730,7 @@ body {
         <option value="">Todos los grupos</option>
         <option value="arv">AR Velocidad</option>
         <option value="arf">AR Fondo</option>
-        <option value="intv">INT Velocidad</option>
-        <option value="intf">INT Fondo</option>
-        <option value="form">Transición</option>
+        <option value="int">Intermedio</option>
       </select>
       <select class="fi" style="flex:1;min-width:120px" id="dep-filtro-estado" onchange="buildNomina()">
         <option value="">Todos</option>
@@ -772,8 +770,7 @@ body {
         <div class="fg"><label class="fl">Grupo</label>
           <select class="fi" id="dep-grupo">
             <option value="arv">AR Velocidad</option><option value="arf">AR Fondo</option>
-            <option value="intv">INT Velocidad</option><option value="intf">INT Fondo</option>
-            <option value="form">Transición</option>
+            <option value="int">Intermedio</option>
           </select>
         </div>
         <div class="fg"><label class="fl">Fecha Ingreso</label><input type="date" class="fi" id="dep-ingreso"></div>
@@ -883,9 +880,7 @@ body {
     <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="planHoyShow('arv')" id="phb-arv">⚡ AR Vel</button>
       <button class="btn btn-secondary btn-sm" onclick="planHoyShow('arf')" id="phb-arf">🏃 AR Fondo</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('intv')" id="phb-intv">⚡ INT Vel</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('intf')" id="phb-intf">🏃 INT Fondo</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('form')" id="phb-form">🌱 Transición</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('int')" id="phb-int">🔷 Intermedio</button>
     </div>
     <div id="plan-hoy-fecha" style="font-size:.72rem;color:var(--t3);margin-bottom:.75rem"></div>
     <div id="plan-hoy-content"><div class="empty"><div class="empty-icon">📅</div>Selecciona un grupo</div></div>
@@ -1046,8 +1041,7 @@ body {
         <div class="fg"><label class="fl">Grupo</label>
           <select class="fi" id="modal-dep-grupo">
             <option value="arv">AR Velocidad</option><option value="arf">AR Fondo</option>
-            <option value="intv">INT Velocidad</option><option value="intf">INT Fondo</option>
-            <option value="form">Transición</option>
+            <option value="int">Intermedio</option>
           </select>
         </div>
         <div class="fg"><label class="fl">Categoría Fed.</label><input class="fi" id="modal-dep-cat" placeholder="ej: PREJUVENIL"></div>
@@ -1149,30 +1143,30 @@ if('serviceWorker' in navigator){
 // DATA (loaded from v8)
 var ATHLETES=[
   {id:1,ap:"ACUÑA CUEVAS",nm:"Amanda Isidora",nac:"18/03/2013",rut:"24221026-3",cat:"PREJUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
-  {id:2,ap:"CANALES CIFUENTES",nm:"Pedro Antonio",nac:"19/08/2009",rut:"23106758-2",cat:"JUVENIL",gen:"M",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intv"},
+  {id:2,ap:"CANALES CIFUENTES",nm:"Pedro Antonio",nac:"19/08/2009",rut:"23106758-2",cat:"JUVENIL",gen:"M",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:3,ap:"ESPINOZA REYES",nm:"Martina",nac:"24/02/2010",rut:"23258334-7",cat:"JUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"FONDO",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arf"},
-  {id:4,ap:"FLORES PEREZ",nm:"Yennyfer Haymara",nac:"28/10/2008",rut:"22858976-4",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intf"},
+  {id:4,ap:"FLORES PEREZ",nm:"Yennyfer Haymara",nac:"28/10/2008",rut:"22858976-4",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:5,ap:"GONZALEZ AZOCAR",nm:"Vicente Isaiaz",nac:"11/05/2007",rut:"22398327-8",cat:"ADULTO",gen:"M",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
   {id:6,ap:"HERREROS PEREIRA",nm:"Isidora Ignacia",nac:"10/03/2011",rut:"23584880-5",cat:"JUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
-  {id:7,ap:"LAGOS ROZAS",nm:"Ivanna Trinidad",nac:"23/11/2012",rut:"24123500-9",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intf"},
-  {id:8,ap:"MONCADA AOPORTUS",nm:"Antonia Elizabeth",nac:"15/03/2017",rut:"25709169-4",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"},
+  {id:7,ap:"LAGOS ROZAS",nm:"Ivanna Trinidad",nac:"23/11/2012",rut:"24123500-9",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:8,ap:"MONCADA AOPORTUS",nm:"Antonia Elizabeth",nac:"15/03/2017",rut:"25709169-4",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:9,ap:"MUNDACA TORRES",nm:"Marianella Monserrat",nac:"15/10/2011",rut:"23772219-1",cat:"JUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
-  {id:10,ap:"PONCE ARROYO",nm:"Antonia Rayen",nac:"18/03/2009",rut:"22980782-K",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intv"},
+  {id:10,ap:"PONCE ARROYO",nm:"Antonia Rayen",nac:"18/03/2009",rut:"22980782-K",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:11,ap:"PRADENAS SILVA",nm:"Keriam Isidora Paz",nac:"22/01/2016",rut:"25263461-4",cat:"INFANTIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"FONDO",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arf"},
-  {id:12,ap:"RUAI ESPINOZA",nm:"Renata Lucia",nac:"31/01/2010",rut:"23238103-5",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intv"},
+  {id:12,ap:"RUAI ESPINOZA",nm:"Renata Lucia",nac:"31/01/2010",rut:"23238103-5",cat:"JUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:13,ap:"RUIZ CONTRERAS",nm:"Gustavo Alfredo",nac:"21/10/2014",rut:"24775111-4",cat:"INFANTIL",gen:"M",nivel:"ALTO RENDIMIENTO",tipo:"FONDO",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arf"},
   {id:14,ap:"SALAS LAZO",nm:"Catalina Francisca",nac:"09/09/2009",rut:"23121932-3",cat:"JUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
-  {id:15,ap:"SANDOVAL CASTANIA",nm:"Victoria",nac:"10/07/2012",rut:"24004595-8",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intf"},
-  {id:16,ap:"URRUTIA CANALES",nm:"Dominga Isidora",nac:"04/12/2019",rut:"27115797-5",cat:"QUINTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"},
+  {id:15,ap:"SANDOVAL CASTANIA",nm:"Victoria",nac:"10/07/2012",rut:"24004595-8",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:16,ap:"URRUTIA CANALES",nm:"Dominga Isidora",nac:"04/12/2019",rut:"27115797-5",cat:"QUINTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:17,ap:"VALENZUELA ZAGAL",nm:"Ainoha Isabella",nac:"03/12/2014",rut:"24815738-0",cat:"INFANTIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"FONDO",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arf"},
-  {id:18,ap:"VEGA COLIHUINCA",nm:"Belen Emilia",nac:"10/08/2012",rut:"24035034-3",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intv"},
-  {id:19,ap:"ILLANES MUÑOZ",nm:"Amanda Ayelen",nac:"17/10/2015",rut:"25184517-4",cat:"TERCERA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"},
-  {id:20,ap:"GAETE MUÑOZ",nm:"Alonso Joaquin",nac:"15/01/2013",rut:"24167736-2",cat:"PREJUVENIL",gen:"M",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intf"},
-  {id:21,ap:"MEDINA CASTELLON",nm:"Miranda Victoria",nac:"22/05/2013",rut:"24854421-K",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"intf"},
-  {id:22,ap:"NOA MACHUCA",nm:"Maite",nac:"04/03/2016",rut:"25307989-4",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"},
+  {id:18,ap:"VEGA COLIHUINCA",nm:"Belen Emilia",nac:"10/08/2012",rut:"24035034-3",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:19,ap:"ILLANES MUÑOZ",nm:"Amanda Ayelen",nac:"17/10/2015",rut:"25184517-4",cat:"TERCERA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:20,ap:"GAETE MUÑOZ",nm:"Alonso Joaquin",nac:"15/01/2013",rut:"24167736-2",cat:"PREJUVENIL",gen:"M",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:21,ap:"MEDINA CASTELLON",nm:"Miranda Victoria",nac:"22/05/2013",rut:"24854421-K",cat:"PREJUVENIL",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:22,ap:"NOA MACHUCA",nm:"Maite",nac:"04/03/2016",rut:"25307989-4",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
   {id:23,ap:"CATRILELBUN CISTERNA",nm:"Isabella Antonia",nac:"15/05/2012",rut:"23950024-2",cat:"PREJUVENIL",gen:"F",nivel:"ALTO RENDIMIENTO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"arv"},
-  {id:24,ap:"JARA ARCOS",nm:"Maria Paz",nac:"04/06/2018",rut:"26309783-1",cat:"QUINTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"},
-  {id:25,ap:"OÑATE VERGARA",nm:"Priscila Ignacia",nac:"03/11/2017",rut:"25973276-K",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"form"}
+  {id:24,ap:"JARA ARCOS",nm:"Maria Paz",nac:"04/06/2018",rut:"26309783-1",cat:"QUINTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"},
+  {id:25,ap:"OÑATE VERGARA",nm:"Priscila Ignacia",nac:"03/11/2017",rut:"25973276-K",cat:"CUARTA",gen:"F",nivel:"INTERMEDIO",tipo:"VELOCIDAD",lesion:null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:"int"}
 ];
 var athletesExtra = {
   1:{apodNm:'',apodTel:'',apodEmail:'',ingreso:'2022-01-01',historial:[]},
@@ -1509,7 +1503,7 @@ function toast(msg, type) {
 // HELPERS
 function fullName(a){ return a.nm&&a.nm!=='--'?a.nm+' '+a.ap:a.ap; }
 function shortName(a){ return a.nm&&a.nm!=='--'?a.nm.split(' ')[0]+' '+a.ap.split(' ')[0]:a.ap.split(' ')[0]; }
-function grupoLabel(g){ return {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'}[g]||g; }
+function grupoLabel(g){ return {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'}[g]||g; }
 // Nivel display: form counts as Intermedio
 function nivelDisplay(g){ return (g==='arv'||g==='arf')?'Alto Rendimiento':'Intermedio'; }
 
@@ -1528,7 +1522,7 @@ function buildDash() {
   var lesiones = ATHLETES.filter(function(a){ return a.lesion; }).length;
   var ar       = ATHLETES.filter(function(a){ return a.grupo==='arv'||a.grupo==='arf'; }).length;
   // Transición cuenta como Intermedio para estadísticas
-  var inter    = ATHLETES.filter(function(a){ return a.grupo==='intv'||a.grupo==='intf'||a.grupo==='form'; }).length;
+  var inter    = ATHLETES.filter(function(a){ return a.grupo==='int'; }).length;
   var statsEl  = document.getElementById('dash-stats');
   if(statsEl) statsEl.innerHTML =
     mkStat('Total',''+total,'Deportistas') +
@@ -1823,14 +1817,13 @@ function cmSetMes(mes){ cmMes=mes; cmData={}; cmInit(); }
 function cmInit() {
   var grupos=[
     {key:'arv',label:'⚡ AR VELOCIDAD'},{key:'arf',label:'🏃 AR FONDO'},
-    {key:'intv',label:'⚡ INT VELOCIDAD'},{key:'intf',label:'🏃 INT FONDO'},{key:'form',label:'🌱 FORMATIVO'},
+    {key:'int',label:'🔷 INTERMEDIO'},
   ];
   var html='';
   grupos.forEach(function(g){
     var deps=ATHLETES.filter(function(a){ return a.grupo===g.key; });
     if(!deps.length) return;
-    var isForm = g.key==='form';
-    html+='<div style="font-size:.65rem;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin:1rem 0 .5rem;text-transform:uppercase">'+g.label+(isForm?' <span style=\'font-size:.6rem;color:var(--t3)\'>— cuenta como INT</span>':'')+'</div>';
+    html+='<div style="font-size:.65rem;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin:1rem 0 .5rem;text-transform:uppercase">'+g.label+'</div>';
     deps.forEach(function(a){
       if(!cmData[a.id]) cmData[a.id]={};
       html+='<div class="cm-card" id="cm-card-'+a.id+'">'
@@ -2703,59 +2696,65 @@ function switchPlanesTab(tab, btn) {
 }
 
 // PLAN DE HOY — updated to show AR + INT adjustment
+// Alto Rendimiento SÍ se especializa por disciplina (velocidad/fondo).
+// Intermedio NO se especializa (incluye a los ex-Formativo), así que ve
+// ambos bloques (usando el "ajuste intermedio" que ya trae cada plan por día).
 function planHoyShow(grupo) {
-  ['arv','arf','intv','intf','form'].forEach(function(g){
+  ['arv','arf','int'].forEach(function(g){
     var b = document.getElementById('phb-'+g);
     if(b){ b.classList.toggle('btn-primary', g===grupo); b.classList.toggle('btn-secondary', g!==grupo); }
   });
 
   var diasKey = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
   var diaActual = diasKey[new Date().getDay()];
-  var esVelocidad = (grupo==='arv'||grupo==='intv');
-  var esAR = (grupo==='arv'||grupo==='arf');
-  var disc = esVelocidad ? 'velocidad' : 'fondo';
-  var planes = planesDisciplina[disc] || {};
-  var semanas = Object.keys(planes);
+  var diasLabel = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
+  var glabel = {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'}[grupo];
   var el = document.getElementById('plan-hoy-content');
   if(!el) return;
 
-  if(!semanas.length){
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>No hay plan cargado para este grupo</div>';
-    return;
+  var esAR = (grupo==='arv'||grupo==='arf');
+  var discsAMostrar = esAR ? [ (grupo==='arv'?'velocidad':'fondo') ] : ['velocidad','fondo'];
+
+  function renderBloque(disc){
+    var planes = planesDisciplina[disc] || {};
+    var semanas = Object.keys(planes);
+    if(!semanas.length) return '';
+    var ultima = semanas[semanas.length-1];
+    var planDia = (planes[ultima]||{})[diaActual] || (planes[ultima]||{}).lunes;
+    if(!planDia) return '';
+
+    var esVelocidad = disc === 'velocidad';
+    var bloque = '<div style="margin-bottom:1rem">';
+    bloque += '<div style="font-size:.65rem;font-weight:700;color:'+(esVelocidad?'var(--orange)':'var(--green)')+';letter-spacing:1px;margin-bottom:.35rem">';
+    bloque += (esVelocidad?'⚡ Velocidad':'🏃 Fondo')+' · Semana '+ultima+'</div>';
+
+    if(typeof planDia === 'object') {
+      if(esAR) {
+        bloque += '<div class="plan-dia-text">'+planDia.ar+'</div>';
+      } else {
+        // Intermedio / Formativo: usan el ajuste intermedio del plan
+        bloque += '<div class="plan-dia-text">'+(planDia.int||planDia.ar)+'</div>';
+      }
+    } else {
+      bloque += '<div class="plan-dia-text">'+planDia+'</div>';
+    }
+    bloque += '</div>';
+    return bloque;
   }
 
-  var ultima = semanas[semanas.length-1];
-  var planDia = (planes[ultima]||{})[diaActual] || (planes[ultima]||{}).lunes;
-  var glabel = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'}[grupo];
-  var diasLabel = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
+  var bloques = discsAMostrar.map(renderBloque).join('');
 
-  if(!planDia){
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>Sin plan para hoy en semana "'+ultima+'"</div>';
+  if(!bloques) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>No hay plan cargado para este grupo</div>';
     return;
   }
 
   var html = '<div class="card">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">';
   html += '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">'+glabel+'</div>';
-  html += '<div style="font-size:.65rem;color:var(--t3)">'+diasLabel[diaActual]||diaActual+' · Semana: '+ultima+'</div>';
+  html += '<div style="font-size:.65rem;color:var(--t3)">'+(diasLabel[diaActual]||diaActual)+'</div>';
   html += '</div>';
-
-  if(typeof planDia === 'object') {
-    // Has ar/int split
-    html += '<div style="font-size:.65rem;font-weight:700;color:'+(esVelocidad?'var(--orange)':'var(--green)')+';letter-spacing:1px;margin-bottom:.35rem">';
-    html += (esVelocidad?'⚡':'🏃')+' Plan AR</div>';
-    html += '<div class="plan-dia-text" style="margin-bottom:.75rem">'+planDia.ar+'</div>';
-
-    if(!esAR) {
-      html += '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:.65rem .85rem">';
-      html += '<div style="font-size:.6rem;font-weight:700;color:var(--blue);margin-bottom:.3rem">📋 AJUSTE INTERMEDIO</div>';
-      html += '<div class="plan-dia-text" style="font-size:.75rem;color:var(--t2)">'+planDia.int+'</div>';
-      html += '</div>';
-    }
-  } else {
-    html += '<div class="plan-dia-text">'+planDia+'</div>';
-  }
-
+  html += bloques;
   html += '</div>';
   el.innerHTML = html;
 }
@@ -3226,8 +3225,8 @@ function _buildFichaHTML(a, tiemposHtml, antroHtml, obsHtml, fechaDoc) {
     + '.footer-doc {margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:9px;color:#9ca3af}'
     + '@media print {body {-webkit-print-color-adjust:exact;print-color-adjust:exact}.page {padding:20px}}';
 
-  var grupoMap = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transición'};
-  var nivelMap = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',intv:'Intermedio',intf:'Intermedio',form:'Intermedio'};
+  var grupoMap = {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'};
+  var nivelMap = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',int:'Intermedio'};
 
   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     + '<title>Ficha - '+a.ap+' '+a.nm+'</title>'
@@ -3377,8 +3376,8 @@ async function generarCertificado(id) {
   var esFem    = a.gen === 'F';
   var trato    = esFem ? 'Srta.' : 'Sr.';
   var fedLabel = esFem ? 'deportista federada' : 'deportista federado';
-  var nivelCert = (a.grupo==='arv'||a.grupo==='arf') ? 'Alta Competencia' : (a.grupo==='form'?'Infantil':'Intermedio');
-  var catTexto = (a.cat||({arv:'Juvenil',arf:'Juvenil',intv:'Juvenil',intf:'Juvenil',form:'Transición'}[a.grupo]||''))+' '+nivelCert;
+  var nivelCert = (a.grupo==='arv'||a.grupo==='arf') ? 'Alta Competencia' : 'Intermedio';
+  var catTexto = (a.cat||({arv:'Juvenil',arf:'Juvenil',int:'Juvenil'}[a.grupo]||''))+' '+nivelCert;
   var rut = (a.rut||'').replace(/(\d)(?=(\d{3})+(?!\d))/g,'$1.');
 
   var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -3892,8 +3891,8 @@ async function descargarFicha(id) {
     y += 22;
 
     // ── Banner del deportista ──
-    var grupoMap  = {arv:'AR Velocidad',arf:'AR Fondo',intv:'INT Velocidad',intf:'INT Fondo',form:'Transici\u00f3n'};
-    var nivelMap  = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',intv:'Intermedio',intf:'Intermedio',form:'Intermedio'};
+    var grupoMap  = {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'};
+    var nivelMap  = {arv:'Alto Rendimiento',arf:'Alto Rendimiento',int:'Intermedio'};
     var bannerH = 62;
     doc.setFillColor(29,58,138);
     doc.roundedRect(marginX, y, contentW, bannerH, 6, 6, 'F');
@@ -4737,7 +4736,7 @@ async function iaEnviar() {
 
     var textBlock = data.content && data.content.find(function(b){ return b.type==='text'; });
     if(!textBlock) {
-      var errMsg = data.error ? data.error.message : (resp.status || 'desconocido');
+      var errMsg = data.error ? (data.error.message || data.error) : (data.type === 'error' ? data.error : JSON.stringify(data).slice(0,200));
       iaAppendMsg('bot', 'Error al conectar con el asistente (' + errMsg + '). Intentá de nuevo.');
       return;
     }
