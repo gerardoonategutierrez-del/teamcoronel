@@ -2255,8 +2255,10 @@ document.addEventListener('DOMContentLoaded', function(){
   // Sincronizar desde Google Sheets (fuente central)
   syncFromSheets().then(function(ok) {
     if(ok) {
+      var gruposMigrados = migrarGruposIntermedio();
       buildDash();
       _saveDataCore();
+      if(gruposMigrados) { saveData(); console.log('[MIGRACION] Grupos corregidos y subidos a Sheets:', gruposMigrados); }
       // Refresca la vista de Tiempos (si está abierta) para que los botones
       // de Editar/Eliminar usen los datos recién sincronizados y no queden
       // apuntando a un registro que ya no existe en memoria.
@@ -3542,6 +3544,20 @@ async function _ejecutarSyncToSheets() {
   }
 }
 
+// Migración de códigos de grupo antiguos (intv/intf/form) al esquema
+// nuevo de 3 grupos (arv/arf/int), ya que solo Alto Rendimiento se
+// especializa por disciplina. Se ejecuta sola al cargar: si encuentra
+// datos viejos (ej. porque Google Sheets todavía no se había actualizado),
+// los corrige en memoria y los vuelve a subir una sola vez.
+function migrarGruposIntermedio() {
+  var mapa = { intv: 'int', intf: 'int', form: 'int' };
+  var cambios = 0;
+  ATHLETES.forEach(function(a){
+    if(mapa[a.grupo]) { a.grupo = mapa[a.grupo]; cambios++; }
+  });
+  return cambios;
+}
+
 async function syncFromSheets() {
   // Las columnas de fecha en Google Sheets (Nacimiento, Ingreso) a veces
   // llegan como fecha/hora completa en formato ISO (ej: "2011-03-10T03:00:00.000Z")
@@ -3673,8 +3689,10 @@ document.addEventListener('DOMContentLoaded',function(){
 
   syncFromSheets().then(function(ok) {
     if(ok) {
+      var gruposMigrados2 = migrarGruposIntermedio();
       buildDash();
       _saveDataCore();
+      if(gruposMigrados2) { saveData(); console.log('[MIGRACION] Grupos corregidos y subidos a Sheets:', gruposMigrados2); }
       if(typeof ptMostrarGrafico==='function') ptMostrarGrafico();
       if(typeof ptMostrarRecientes==='function') ptMostrarRecientes();
     } else {
