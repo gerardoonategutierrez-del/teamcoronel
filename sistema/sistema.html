@@ -4735,7 +4735,9 @@ async function iaEnviar() {
     var contextoHeader = iaDepId
       ? '--- CONTEXTO DEL DEPORTISTA SELECCIONADO ---'
       : (iaGrupoId ? '--- CONTEXTO DEL GRUPO SELECCIONADO ---' : '');
-    var transcript = iaHistory.map(function(m){
+    // Solo los últimos intercambios, para que el prompt no crezca sin
+    // límite en conversaciones largas (evita timeouts y respuestas lentas).
+    var transcript = iaHistory.slice(-8).map(function(m){
       return (m.role==='user' ? 'Coach: ' : 'Asistente: ') + m.text;
     }).join('\n\n');
 
