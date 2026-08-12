@@ -203,7 +203,7 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
     <a href="#sponsors">Sponsors</a>
     <a href="#postulacion">Postular</a>
   </div>
-  <button class="robot-btn" onclick="window.location.href='sistema.html'" title="Sistema de Entrenamiento">
+  <button class="robot-btn" onclick="abrirCoachModal()" title="Sistema de Entrenamiento">
     <img class="robot-img" src="/assets/robot-icon.png" alt="IA">
     <span class="robot-lbl">Sistema</span>
   </button>
@@ -394,6 +394,30 @@ function abrirCertModal(){
 }
 function cerrarCertModal(){
   document.getElementById("cert-overlay").classList.remove("open");
+}
+
+// ══ LOGIN COACH (abre el modal en vez de ir directo al sistema, así
+// nadie puede entrar a sistema.html sin saber la clave) ══
+var COACH_PASS = "Coronel2026";
+function abrirCoachModal(){
+  document.getElementById("coach-overlay").classList.add("open");
+  document.getElementById("coach-err").style.display = "none";
+  document.getElementById("coach-pw").value = "";
+  document.getElementById("coach-pw").focus();
+}
+function cerrarCoachModal(){
+  document.getElementById("coach-overlay").classList.remove("open");
+}
+function coachLogin(){
+  var pw = document.getElementById("coach-pw").value;
+  var el = document.getElementById("coach-err");
+  if(pw === COACH_PASS){
+    sessionStorage.setItem('tc_auth', 'coach');
+    window.location.href = 'sistema.html';
+  } else {
+    el.textContent = "Clave incorrecta";
+    el.style.display = "block";
+  }
 }
 function certMostrarRegistro(){
   document.getElementById("cert-view-login").style.display="none";
@@ -1019,6 +1043,17 @@ loadContent();
       <button class="cert-modal-btn green" id="cert-btn-reg" onclick="certRegistrar()">Crear contraseña</button>
       <div class="cert-modal-lnk"><a onclick="certMostrarLogin()">Volver</a></div>
     </div>
+  </div>
+</div>
+<div class="cert-overlay" id="coach-overlay">
+  <div class="cert-modal">
+    <button class="cert-modal-close" onclick="cerrarCoachModal()">&times;</button>
+    <h3>Sistema de Entrenamiento</h3>
+    <p>Acceso solo para entrenadores del club.</p>
+    <div class="cert-modal-err" id="coach-err"></div>
+    <div class="cert-field"><label>Clave de coach</label>
+      <input type="password" id="coach-pw" placeholder="Clave" onkeydown="if(event.key==='Enter')coachLogin()"></div>
+    <button class="cert-modal-btn blue" id="coach-btn" onclick="coachLogin()">Ingresar</button>
   </div>
 </div>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
