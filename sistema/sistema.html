@@ -776,7 +776,7 @@ body {
         <div class="fg"><label class="fl">Fecha Ingreso</label><input type="date" class="fi" id="dep-ingreso"></div>
       </div>
       <div class="fg"><label class="fl">Lesión activa</label><input class="fi" id="dep-lesion" placeholder="Ej: Rodilla derecha (dejar vacío si no)"></div>
-      <button class="btn btn-primary btn-full" onclick="guardarDeportista()">✓ Guardar Deportista</button>
+      <button class="btn btn-primary btn-full" id="btn-guardar-dep" onclick="guardarDeportista()">✓ Guardar Deportista</button>
     </div>
   </div>
 </section>
@@ -1612,7 +1612,7 @@ function buildNomina() {
   }).join('');
 }
 
-function guardarDeportista() {
+async function guardarDeportista() {
   var ap=(document.getElementById('dep-ap')||{}).value.trim().toUpperCase();
   var nm=(document.getElementById('dep-nm')||{}).value.trim();
   var nac=(document.getElementById('dep-nac')||{}).value.trim();
@@ -1626,9 +1626,26 @@ function guardarDeportista() {
   var newId=Math.max.apply(null,ATHLETES.map(function(a){return a.id;}))+1;
   ATHLETES.push({id:newId,ap:ap,nm:nm,nac:nac,gen:gen,nivel:nivel,tipo:tipo,lesion:lesion||null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:grupo});
   athletesExtra[newId]={apodNm:'',apodTel:'',apodEmail:'',ingreso:ingreso,historial:[]};
-  saveData();
+  _saveDataCore();
+
+  // Antes esto se guardaba solo localmente y la subida a Google Sheets
+  // quedaba pendiente (con 0.6s de espera) — si recargabas la página o
+  // navegabas a otra sección en ese instante, el deportista se perdía
+  // porque nunca llegó a guardarse en la hoja. Ahora se espera la
+  // confirmación de la hoja antes de avisar que quedó guardado, y no se
+  // deja seguir hasta que esa confirmación llega.
+  var btn = document.getElementById('btn-guardar-dep');
+  if(btn){ btn.disabled=true; btn.textContent='Guardando en la nube...'; }
+  try {
+    await syncToSheets();
+    toast('Deportista agregado y guardado en la nube ✓');
+  } catch(e) {
+    toast('Se guardó en este dispositivo, pero no se pudo confirmar en la nube. No cierres ni recargues la página, vuelve a intentar guardar.', 'err');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='✓ Guardar Deportista'; }
+  }
+
   ['dep-ap','dep-nm','dep-nac','dep-lesion'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
-  toast('Deportista agregado ✓');
   switchDepTab('nomina', document.querySelector('#sec-deportistas .tab'));
 }
 
