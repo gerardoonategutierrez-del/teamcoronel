@@ -698,7 +698,10 @@ body {
         <div class="fg"><label class="fl">Apellidos</label><input class="fi" id="dep-ap" placeholder="Ej: González Azocar"></div>
         <div class="fg"><label class="fl">Nombres</label><input class="fi" id="dep-nm" placeholder="Ej: Vicente"></div>
       </div>
-      <div class="fg"><label class="fl">RUT</label><input class="fi" id="dep-rut" placeholder="ej: 24221026-3"></div>
+      <div class="fi-row">
+        <div class="fg"><label class="fl">RUT</label><input class="fi" id="dep-rut" placeholder="ej: 24221026-3"></div>
+        <div class="fg"><label class="fl">Categoría Fed.</label><input class="fi" id="dep-cat" placeholder="ej: PREJUVENIL"></div>
+      </div>
       <div class="fi-row">
         <div class="fg"><label class="fl">Fecha Nacimiento</label><input class="fi" id="dep-nac" placeholder="DD/MM/AAAA"></div>
         <div class="fg"><label class="fl">Género</label>
@@ -1511,6 +1514,7 @@ function guardarDeportista() {
   var ap=(document.getElementById('dep-ap')||{}).value.trim().toUpperCase();
   var nm=(document.getElementById('dep-nm')||{}).value.trim();
   var rut=(document.getElementById('dep-rut')||{}).value.trim();
+  var cat=(document.getElementById('dep-cat')||{}).value.trim().toUpperCase();
   var nac=(document.getElementById('dep-nac')||{}).value.trim();
   var gen=(document.getElementById('dep-gen')||{}).value;
   var nivel=(document.getElementById('dep-nivel')||{}).value;
@@ -1523,10 +1527,10 @@ function guardarDeportista() {
   var rutDuplicado = ATHLETES.some(function(a){ return (a.rut||'').trim().toUpperCase() === rut.toUpperCase(); });
   if(rutDuplicado){ toast('Ya existe un deportista con ese RUT','err'); return; }
   var newId=Math.max.apply(null,ATHLETES.map(function(a){return a.id;}))+1;
-  ATHLETES.push({id:newId,ap:ap,nm:nm,rut:rut,nac:nac,gen:gen,nivel:nivel,tipo:tipo,lesion:lesion||null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:grupo});
+  ATHLETES.push({id:newId,ap:ap,nm:nm,rut:rut,cat:cat,nac:nac,gen:gen,nivel:nivel,tipo:tipo,lesion:lesion||null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:grupo});
   athletesExtra[newId]={apodNm:'',apodTel:'',apodEmail:'',ingreso:ingreso,historial:[]};
   saveData();
-  ['dep-ap','dep-nm','dep-rut','dep-nac','dep-lesion'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
+  ['dep-ap','dep-nm','dep-rut','dep-cat','dep-nac','dep-lesion'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
   toast('Deportista agregado ✓');
   switchDepTab('nomina', document.querySelector('#sec-deportistas .tab'));
 }
@@ -2008,35 +2012,6 @@ function planHoyInit(){
   var el=document.getElementById('plan-hoy-fecha');
   if(el) el.textContent=dias[hoy.getDay()]+', '+hoy.getDate()+' de '+meses[hoy.getMonth()];
 }
-
-
-// INIT
-document.addEventListener('DOMContentLoaded', function(){
-  loadData();          // Carga local rápida
-  buildDash();
-  planHoyInit();
-  var mesActual=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][new Date().getMonth()];
-  cmMes=mesActual;
-  var cmSel=document.getElementById('cm-mes-sel');
-  if(cmSel) cmSel.value=mesActual;
-
-  // Track page visits
-  var visits = parseInt(localStorage.getItem('tc_visits')||'0') + 1;
-  localStorage.setItem('tc_visits', visits);
-
-  // Sincronizar desde Google Sheets (fuente central)
-  syncFromSheets().then(function(ok) {
-    if(ok) {
-      buildDash();
-      _saveDataCore();
-    } else {
-      // Sheets empty or error - push local data up
-      console.log('[SYNC] Sheets empty, pushing local data...');
-      syncToSheets();
-    }
-  });
-});
-
 
 
 // PLANES GUARDADOS
@@ -3180,7 +3155,7 @@ async function syncFromSheets() {
         var id = parseInt(row[1]);
         var a = ATHLETES.find(function(x){ return x.id===id; });
         if(!a) {
-          a = {id:id, ap:row[2]||'', nm:row[3]||'', gen:row[7]||'M', nivel:row[8]||'INTERMEDIO',
+          a = {id:id, ap:row[2]||'', nm:row[3]||'', cat:'', gen:row[7]||'M', nivel:row[8]||'INTERMEDIO',
                tipo:row[9]||'VELOCIDAD', res:3, vel:0, tec:3, fue:3, prepF:false, grupo:row[10]||'form'};
           ATHLETES.push(a);
         }
@@ -3275,7 +3250,6 @@ document.addEventListener('DOMContentLoaded',function(){
   var visits = parseInt(localStorage.getItem('tc_visits')||'0') + 1;
   localStorage.setItem('tc_visits', visits);
 
-  _saveDataCore();
   loadData();
   buildDash();
   planHoyInit();
@@ -3288,9 +3262,12 @@ document.addEventListener('DOMContentLoaded',function(){
     if(ok) {
       buildDash();
       _saveDataCore();
+      var secActual = document.querySelector('.sec.on');
+      if(secActual && secActual.id==='sec-deportistas'){ buildNomina(); segPopulate(); }
     } else {
-      console.log('[SYNC] Sheets empty, pushing local data...');
-      syncToSheets();
+      // No se pudo leer desde Sheets (ej: sin conexión). NO se sobrescribe la nube:
+      // eso borraría datos que aún no se han sincronizado localmente.
+      console.warn('[SYNC] No se pudo leer desde Sheets, se mantienen los datos locales sin sobrescribir la nube.');
     }
   });
 });
