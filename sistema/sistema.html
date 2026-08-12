@@ -3179,6 +3179,11 @@ async function syncFromSheets() {
       if(row[0] === 'ATHLETE') {
         var id = parseInt(row[1]);
         var a = ATHLETES.find(function(x){ return x.id===id; });
+        if(!a) {
+          a = {id:id, ap:row[2]||'', nm:row[3]||'', gen:row[7]||'M', nivel:row[8]||'INTERMEDIO',
+               tipo:row[9]||'VELOCIDAD', res:3, vel:0, tec:3, fue:3, prepF:false, grupo:row[10]||'form'};
+          ATHLETES.push(a);
+        }
         if(a) {
           a.nac    = row[4]  || a.nac;
           a.rut    = row[5]  || a.rut;
