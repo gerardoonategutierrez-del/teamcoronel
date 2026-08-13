@@ -3683,6 +3683,19 @@ async function syncFromSheets() {
           a.grupo  = row[10] || a.grupo;
           a.lesion = row[11] || null;
           a.vel    = row[12] ? parseFloat(row[12]) : a.vel;
+        } else {
+          // Deportista que existe en la hoja pero no en la lista con la que
+          // arrancó la página (ej: se agregó desde otro dispositivo, o la
+          // página no se había refrescado desde que se creó). Antes esto se
+          // ignoraba silenciosamente y la deportista nunca aparecía; ahora
+          // se agrega a la lista igual que si siempre hubiera estado ahí.
+          ATHLETES.push({
+            id: id, ap: row[2]||'', nm: row[3]||'',
+            nac: normalizarFecha(row[4])||'', rut: row[5]||'', cat: row[6]||'',
+            gen: row[7]||'F', nivel: row[8]||'INTERMEDIO', tipo: row[9]||'VELOCIDAD',
+            lesion: row[11]||null, res:3, vel: row[12]?parseFloat(row[12]):0,
+            tec:3, fue:3, prepF:false, grupo: row[10]||'int'
+          });
         }
         var historial = []; try { historial = JSON.parse(row[17]||'[]'); } catch(e){}
         var mediciones = []; try { mediciones = JSON.parse(row[18]||'[]'); } catch(e){}
