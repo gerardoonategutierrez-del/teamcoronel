@@ -755,6 +755,10 @@ body {
         </div>
       </div>
       <div class="fi-row">
+        <div class="fg"><label class="fl">RUT</label><input class="fi" id="dep-rut" placeholder="ej: 24221026-3"></div>
+        <div class="fg"><label class="fl">Categoría Fed.</label><input class="fi" id="dep-cat" placeholder="ej: PREJUVENIL"></div>
+      </div>
+      <div class="fi-row">
         <div class="fg"><label class="fl">Nivel</label>
           <select class="fi" id="dep-nivel">
             <option value="ALTO RENDIMIENTO">Alto Rendimiento</option>
@@ -1616,6 +1620,8 @@ async function guardarDeportista() {
   var ap=(document.getElementById('dep-ap')||{}).value.trim().toUpperCase();
   var nm=(document.getElementById('dep-nm')||{}).value.trim();
   var nac=(document.getElementById('dep-nac')||{}).value.trim();
+  var rut=(document.getElementById('dep-rut')||{}).value.trim();
+  var cat=(document.getElementById('dep-cat')||{}).value.trim().toUpperCase();
   var gen=(document.getElementById('dep-gen')||{}).value;
   var nivel=(document.getElementById('dep-nivel')||{}).value;
   var tipo=(document.getElementById('dep-tipo')||{}).value;
@@ -1624,7 +1630,7 @@ async function guardarDeportista() {
   var lesion=(document.getElementById('dep-lesion')||{}).value.trim();
   if(!ap){ toast('Ingresa los apellidos','err'); return; }
   var newId=Math.max.apply(null,ATHLETES.map(function(a){return a.id;}))+1;
-  ATHLETES.push({id:newId,ap:ap,nm:nm,nac:nac,gen:gen,nivel:nivel,tipo:tipo,lesion:lesion||null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:grupo});
+  ATHLETES.push({id:newId,ap:ap,nm:nm,nac:nac,rut:rut,cat:cat,gen:gen,nivel:nivel,tipo:tipo,lesion:lesion||null,res:3,vel:0,tec:3,fue:3,prepF:false,grupo:grupo});
   athletesExtra[newId]={apodNm:'',apodTel:'',apodEmail:'',ingreso:ingreso,historial:[]};
   _saveDataCore();
 
@@ -1645,7 +1651,7 @@ async function guardarDeportista() {
     if(btn){ btn.disabled=false; btn.textContent='✓ Guardar Deportista'; }
   }
 
-  ['dep-ap','dep-nm','dep-nac','dep-lesion'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
+  ['dep-ap','dep-nm','dep-nac','dep-rut','dep-cat','dep-lesion'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
   switchDepTab('nomina', document.querySelector('#sec-deportistas .tab'));
 }
 
