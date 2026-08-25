@@ -749,6 +749,24 @@ function parseFechaNoticia(str){
   }
   return null;
 }
+// Si alguien escribe una etiqueta que Google Sheets reconoce como fecha
+// (ej: "agosto 2026"), Sheets la guarda como fecha real por dentro aunque
+// en pantalla se vea como texto. Esta función detecta ese caso al mostrarla
+// en la landing y la vuelve a convertir a un texto legible en vez de
+// mostrar la fecha completa con hora tal cual llega del servidor.
+function formatearEtiqueta(str){
+  if(!str) return str;
+  var s=String(str).trim();
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(s)){
+    var d=new Date(s);
+    if(!isNaN(d.getTime())){
+      var meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+      return meses[d.getUTCMonth()]+" "+d.getUTCFullYear();
+    }
+  }
+  return str;
+}
+
 async function enviarPostulacion(){
   var n=document.getElementById("f-nombre").value.trim();
   var e=document.getElementById("f-edad").value.trim();
@@ -827,10 +845,22 @@ async function loadContent(){
         }
         var cardHtml=function(row,featured){
           var loadAttr=featured?'':' loading="lazy"';
+          // Hasta 4 fotos por noticia: la "principal" (elegida con la estrella
+          // en el panel admin) es la que se ve en la tarjeta; al hacer clic se
+          // abre el carrusel para ver las demás, igual que en Deportistas.
+          var fotosNoticia=[row[3],row[5],row[6],row[7]];
+          var destIdxN=(parseInt(row[8])||1)-1;
+          if(destIdxN<0||destIdxN>3||!fotosNoticia[destIdxN]) destIdxN=fotosNoticia.findIndex(Boolean);
+          var fotoPrincipalN=destIdxN>-1?fotosNoticia[destIdxN]:'';
+          var ordenCarruselN=fotosNoticia.filter(Boolean);
+          if(destIdxN>-1){
+            ordenCarruselN=[fotoPrincipalN].concat(fotosNoticia.filter(function(f,i){return f&&i!==destIdxN;}));
+          }
+          var carruselJSONN=JSON.stringify(ordenCarruselN).replace(/"/g,"&quot;");
           return '<div class="noticia-card">'+
-            (row[3]?'<img class="noticia-img" src="'+optimizarImg(row[3],600)+'"'+loadAttr+' alt="" onclick="openLightbox(\''+row[3]+'\')">':'')+
+            (fotoPrincipalN?'<img class="noticia-img" src="'+optimizarImg(fotoPrincipalN,600)+'"'+loadAttr+' alt="" onclick="abrirCarruselDeportista(\''+carruselJSONN+'\')">':'')+
             '<div class="noticia-body">'+
-            '<div class="noticia-fecha">'+row[1]+'</div>'+
+            '<div class="noticia-fecha">'+formatearEtiqueta(row[1])+'</div>'+
             '<div class="noticia-titulo">'+row[0]+'</div>'+
             '<div class="noticia-texto">'+row[2]+'</div>'+
             '</div></div>';
