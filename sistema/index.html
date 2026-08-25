@@ -419,7 +419,7 @@ function coachLogin(){
   var el = document.getElementById("coach-err");
   if(pw === COACH_PASS){
     sessionStorage.setItem('tc_auth', 'coach');
-    window.location.href = 'sistema.html';
+    window.location.href = '/sistema/sistema.html';
   } else {
     el.textContent = "Clave incorrecta";
     el.style.display = "block";
