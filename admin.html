@@ -110,12 +110,24 @@ body{font-family:-apple-system,sans-serif;background:#0a1628;color:#e5e7eb;min-h
 <div class="tp on" id="tp-n">
 <div class="fs"><h3>+ Nueva Noticia</h3>
 <div class="fi"><label>TÍTULO</label><input id="n0" type="text" placeholder="Título de la noticia"></div>
-<div class="fg"><div class="fi"><label>ETIQUETA</label><input id="n1" type="text" placeholder="ej: Julio 2026 · Competencia"></div>
-<div class="fi"><label>FOTO</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'n3','n')">
-<div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upn">Subiendo...</div>
-<img class="uap" id="pn3"></div><input type="hidden" id="n3"></div></div>
+<div class="fi"><label>ETIQUETA</label><input id="n1" type="text" placeholder="ej: Julio 2026 · Competencia"></div>
+<input type="hidden" id="n4" value="">
+<div class="fg" style="grid-template-columns:repeat(2,1fr)">
+  <div class="fi"><label>FOTO 1 (Principal)</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'n3','n')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upn">Subiendo...</div>
+  <img class="uap" id="pn3"></div><input type="hidden" id="n3"></div>
+  <div class="fi"><label>FOTO 2</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'n5','n')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upn5">Subiendo...</div>
+  <img class="uap" id="pn5"></div><input type="hidden" id="n5"></div>
+  <div class="fi"><label>FOTO 3</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'n6','n')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upn6">Subiendo...</div>
+  <img class="uap" id="pn6"></div><input type="hidden" id="n6"></div>
+  <div class="fi"><label>FOTO 4</label><div class="ua"><input type="file" accept="image/*" onchange="up(this,'n7','n')">
+  <div class="ual">&#128247; <b>Seleccionar foto</b></div><div class="uping" id="upn7">Subiendo...</div>
+  <img class="uap" id="pn7"></div><input type="hidden" id="n7"></div>
+</div>
 <div class="fi"><label>TEXTO</label><textarea id="n2" placeholder="Contenido..."></textarea></div>
-<button class="btn" onclick="add('landing_noticias',['n0','n1','n2','n3'],cN)">Publicar</button>
+<button class="btn" onclick="add('landing_noticias',['n0','n1','n2','n3','n4','n5','n6','n7'],cN)">Publicar</button>
 </div><div id="lN"><div class="ie">Cargando...</div></div></div>
 <div class="tp" id="tp-g">
 <div class="fs"><h3>+ Agregar Foto</h3>
@@ -505,10 +517,30 @@ async function cN(){
     if(!d.length){el.innerHTML='<div class="ie">Sin noticias a\u00fan</div>';return;}
     el.innerHTML=d.map(function(r,i){
       var isFeat=r[4]==="SI";
-      return '<div class="ic">'+(r[3]?'<img class="ii" src="'+r[3]+'">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128240;</div>')
+      var fotos=[r[3],r[5],r[6],r[7]];
+      var destIdx=(parseInt(r[8])||1)-1;
+      if(destIdx<0||destIdx>3||!fotos[destIdx]) destIdx=fotos.findIndex(Boolean);
+      var fotoPrincipal=destIdx>-1?fotos[destIdx]:'';
+
+      var miniFotos=fotos.map(function(f,slot){
+        if(!f){
+          return '<div style="width:34px;height:34px;border-radius:6px;background:#111827;border:1px dashed #374151;'
+            +'display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:.6rem;flex-shrink:0">'+(slot+1)+'</div>';
+        }
+        var esDest=slot===destIdx;
+        return '<div style="position:relative;flex-shrink:0">'
+          +'<img src="'+f+'" style="width:34px;height:34px;border-radius:6px;object-fit:cover;'+(esDest?'outline:2px solid #f59e0b':'outline:1px solid #374151')+'">'
+          +'<button onclick="destacarFotoNoticia('+i+','+slot+')" title="'+(esDest?'Foto principal actual':'Marcar como principal')+'" '
+          +'style="position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;border:none;font-size:.6rem;line-height:16px;padding:0;cursor:pointer;'
+          +(esDest?'background:#f59e0b;color:#111827':'background:#374151;color:#9ca3af')+'">&#9733;</button>'
+          +'</div>';
+      }).join('');
+
+      return '<div class="ic">'+(fotoPrincipal?'<img class="ii" src="'+fotoPrincipal+'">':'<div class="ii" style="display:flex;align-items:center;justify-content:center;color:#6b7280">&#128240;</div>')
         +'<div class="inf">'+(isFeat?'<div class="featured-badge">&#9733; Destacada arriba</div><br>':'')
         +'<div class="it">'+r[0]+'</div><div class="is">'+r[1]+'</div>'
         +'<div class="is" style="color:#6b7280">'+r[2].substring(0,80)+'...</div>'
+        +'<div style="display:flex;gap:.4rem;margin:.5rem 0">'+miniFotos+'</div>'
         +'<div class="ia">'
         +(isFeat?'':'<button class="btn bs by" onclick="setFeatured('+i+')">&#9733; Destacar</button>')
         +'<button class="btn bs bo" onclick="edit(\'N\','+i+',\'landing_noticias\',cN)">Editar</button>'
@@ -516,6 +548,23 @@ async function cN(){
         +'</div></div></div>';
     }).join("");
   }catch(e){document.getElementById("lN").innerHTML='<div class="ie">Error al cargar</div>';}
+}
+
+async function destacarFotoNoticia(idx, slot){
+  var rows=_STORE.N||[];
+  var row=rows[idx];
+  if(!row) return;
+  var fotos=[row[3],row[5],row[6],row[7]];
+  if(!fotos[slot]){ toast("Esa foto est\u00e1 vac\u00eda",false); return; }
+  var nueva=row.slice(0,9);
+  while(nueva.length<9) nueva.push("");
+  nueva[8]=String(slot+1);
+  toast("Actualizando...");
+  try{
+    await updRow("landing_noticias", idx, nueva);
+    toast("\u2713 Foto principal actualizada");
+    setTimeout(cN,900);
+  }catch(e){toast("Error al actualizar",false);}
 }
 
 async function setFeatured(idx){
@@ -656,7 +705,7 @@ async function cSP(){
 }
 
 var _LABELS={
-  N:['TÍTULO','FECHA','TEXTO','FOTO'],
+  N:['TÍTULO','ETIQUETA','TEXTO','FOTO 1','DESTACADA','FOTO 2','FOTO 3','FOTO 4'],
   D:['NOMBRE','EDAD','CATEGORÍA','FOTO 1','LOGRO','FOTO 2','FOTO 3','FOTO 4','DESTACADA'],
   T:['NOMBRE','CARGO','DESCRIPCIÓN','FOTO'],
   SP:['NOMBRE','INSTAGRAM','DESCRIPCIÓN','LOGO']
