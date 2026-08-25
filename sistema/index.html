@@ -69,6 +69,12 @@ section{padding:5rem 1.5rem}
 .noticias-grid{display:flex;gap:1.25rem;overflow-x:auto;scroll-behavior:smooth;padding-bottom:.5rem;scrollbar-width:none;-ms-overflow-style:none}
 .noticias-grid::-webkit-scrollbar{display:none}
 .noticia-card{flex:0 0 290px;min-width:290px;background:#0f1e3a;border:1px solid rgba(37,99,235,.12);border-radius:14px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s;cursor:pointer}
+.noticia-share-btn{display:inline-flex;align-items:center;gap:.35rem;margin-top:.7rem;background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.35);color:#0ea5e9;font-size:.68rem;font-weight:700;letter-spacing:.4px;padding:.4rem .7rem;border-radius:20px;cursor:pointer;transition:background .2s}
+.noticia-share-btn:hover{background:rgba(14,165,233,.25)}
+.tc-toast{position:fixed;left:50%;bottom:1.75rem;transform:translateX(-50%) translateY(20px);background:#0f1e3a;border:1px solid rgba(14,165,233,.4);color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.82rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;text-align:center;max-width:90vw}
+.tc-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.noticia-card.tc-highlight{animation:tcHighlight 2.2s ease}
+@keyframes tcHighlight{0%,100%{box-shadow:none;border-color:rgba(37,99,235,.12)}25%,75%{box-shadow:0 0 0 3px rgba(14,165,233,.7);border-color:rgba(14,165,233,.7)}}
 .noticia-card:hover{transform:translateY(-5px);border-color:rgba(14,165,233,.35);box-shadow:0 8px 30px rgba(14,165,233,.1)}
 .noticia-img{width:100%;height:220px;object-fit:cover;object-position:center top;cursor:zoom-in;transition:opacity .2s}
 .noticia-img:hover{opacity:.9}
@@ -733,6 +739,54 @@ function scrollNoticias(dir){
 function scrollGaleria(dir){
   document.getElementById("gal-carousel").scrollBy({left:dir*245,behavior:"smooth"});
 }
+// ══ COMPARTIR NOTICIA (enlace directo, ej. para historias de Instagram) ══
+// Cada noticia recibe un identificador simple a partir de su título (slug),
+// para poder armar un link tipo ?noticia=concentracion-odesur que, al
+// abrirse, lleva directo a esa noticia en vez de solo a la portada.
+function slugify(str){
+  return String(str||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'');
+}
+function tcToast(msg){
+  var el=document.getElementById('tc-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='tc-toast';
+    el.className='tc-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.classList.add('on');
+  clearTimeout(window._tcToastTimer);
+  window._tcToastTimer=setTimeout(function(){ el.classList.remove('on'); },2600);
+}
+function compartirNoticia(e,slug){
+  if(e) e.stopPropagation();
+  var url=location.origin+location.pathname+'?noticia='+slug;
+  var avisar=function(){ tcToast('Enlace copiado ✓ Pégalo en tu historia de Instagram'); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(avisar).catch(function(){ prompt('Copia este enlace:',url); });
+  }else{
+    prompt('Copia este enlace:',url);
+  }
+}
+function _irANoticiaCompartida(){
+  try{
+    var params=new URLSearchParams(location.search);
+    var slug=params.get('noticia');
+    if(!slug) return;
+    setTimeout(function(){
+      var el=document.querySelector('.noticia-card[data-noticia-slug="'+slug.replace(/"/g,'')+'"]');
+      if(!el) return;
+      el.scrollIntoView({behavior:'smooth',block:'center'});
+      el.classList.add('tc-highlight');
+      setTimeout(function(){ el.classList.remove('tc-highlight'); },2300);
+    },350);
+  }catch(err){}
+}
+
 function parseFechaNoticia(str){
   if(!str) return null;
   var s=String(str).trim();
@@ -857,16 +911,19 @@ async function loadContent(){
             ordenCarruselN=[fotoPrincipalN].concat(fotosNoticia.filter(function(f,i){return f&&i!==destIdxN;}));
           }
           var carruselJSONN=JSON.stringify(ordenCarruselN).replace(/"/g,"&quot;");
-          return '<div class="noticia-card">'+
+          var slugN=slugify(row[0]);
+          return '<div class="noticia-card" data-noticia-slug="'+slugN+'">'+
             (fotoPrincipalN?'<img class="noticia-img" src="'+optimizarImg(fotoPrincipalN,600)+'"'+loadAttr+' alt="" onclick="abrirCarruselDeportista(\''+carruselJSONN+'\')">':'')+
             '<div class="noticia-body">'+
             '<div class="noticia-fecha">'+formatearEtiqueta(row[1])+'</div>'+
             '<div class="noticia-titulo">'+row[0]+'</div>'+
             '<div class="noticia-texto">'+row[2]+'</div>'+
+            '<button class="noticia-share-btn" onclick="compartirNoticia(event,\''+slugN+'\')">&#128279; Compartir</button>'+
             '</div></div>';
         };
         document.getElementById("noticia-featured").innerHTML=cardHtml(ordered[0],true);
         document.getElementById("noticias-grid").innerHTML=ordered.slice(1).map(function(row){return cardHtml(row,false);}).join("");
+        _irANoticiaCompartida();
       }
     }
 
