@@ -2854,6 +2854,28 @@ function genExtraerDiaDeTexto(texto, diaLabel) {
   return m ? m[1].trim() : null;
 }
 
+// La IA no siempre respeta la instrucción de poner la fecha real en el
+// encabezado de cada día (visto en la práctica). En vez de seguir
+// insistiendo por prompt, se corrige el texto DESPUÉS de recibirlo:
+// se busca cada encabezado de día (con o sin fecha, como sea que lo haya
+// escrito la IA) y se reemplaza por el encabezado correcto ya armado en
+// el código — así la fecha queda bien sí o sí, sin depender de la IA.
+function genForzarFechasEnTexto(texto, fechasSemana) {
+  if(!texto) return texto;
+  var diasBase = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
+  var diasSinTilde = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
+  var resultado = texto;
+  diasBase.forEach(function(dia, i){
+    var re = new RegExp('\\*\\*(?:'+dia+'|'+diasSinTilde[i]+')[^*\\n]*\\*\\*');
+    if(re.test(resultado)) {
+      resultado = resultado.replace(re, '**'+fechasSemana[i]+'**');
+    } else {
+      console.warn('[genForzarFechasEnTexto] No se encontró encabezado para '+dia+' — la IA pudo haber omitido ese día');
+    }
+  });
+  return resultado;
+}
+
 // Arma un resumen CORTO (no el texto completo) de los ejercicios
 // principales de Alta Vel/Alta Fondo de la semana anterior, para dársela
 // de contexto a la IA y que varíe/progrese en vez de repetir igual —
@@ -2977,6 +2999,10 @@ async function genGenerarProximaSemana() {
     var textBlock = (data.content||[]).find(function(b){ return b.type==='text'; });
     var texto = textBlock ? textBlock.text.trim() : '';
     if(!texto) { resEl.innerHTML = '<div class="card" style="color:var(--red)">La IA no devolvió texto.</div>'; return; }
+
+    // Corrige las fechas de los encabezados de día sí o sí, sin depender
+    // de que la IA las haya puesto bien (ver comentario en la función).
+    texto = genForzarFechasEnTexto(texto, fechasSemana);
 
     resEl.innerHTML = '<div class="card">'
       + '<div style="font-size:.7rem;font-weight:700;color:var(--t3);margin-bottom:.6rem">SEMANA '+(idx+1)+' — '+s.fase+' (revisa y edita antes de guardar)</div>'
@@ -3113,8 +3139,16 @@ function planHoyMostrarDia(diaKey) {
 
   var etiquetaDia = diasLabel[diaKey] + (esHoy ? ' (hoy)' : '');
 
-  // Prioridad 1: el plan generado por IA de la semana actual.
-  var semanaGen = planesGenerados.find(function(p){ return p.semanaKey === semanaKeyActual; });
+  // Prioridad 1: el plan generado por IA de la semana actual. Se busca
+  // primero por clave exacta (lunes de la semana) y, si no matchea, por
+  // rango de fechas como respaldo — así nunca muestra una semana que no
+  // corresponde a la fecha real de hoy.
+  var hoyMid = new Date(hoy); hoyMid.setHours(0,0,0,0);
+  var semanaGen = planesGenerados.find(function(p){ return p.semanaKey === semanaKeyActual; })
+    || planesGenerados.find(function(p){
+         var ini = new Date(p.inicio+'T00:00:00'), fin = new Date(p.fin+'T00:00:00');
+         return hoyMid >= ini && hoyMid <= fin;
+       });
   if(semanaGen) {
     var bloqueDia = genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus)
       || genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus.replace('MIERCOLES','MIÉRCOLES').replace('SABADO','SÁBADO'));
