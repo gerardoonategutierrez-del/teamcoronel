@@ -2737,15 +2737,25 @@ var METODOLOGIA_PLANES_PROMPT =
   '- Velocidad: lanzados de 100/200/400mts, lastre de frecuencia, lastre con banda elástica, salidas detenidas (individuales y grupales), relevos de 100-300mts, tras moto (remolcada), pirámide "Escalera" (repeticiones descendentes con tiempo decreciente), circuito de vallas (vallas media + sprint)\n' +
   '- Fondo: series por distancia fija (ej. 4x3000, 6x5000, 3x8k progresivos), pirámide media (2000→1200) o larga (10 a 1 vueltas), giros progresivos mantenidos, series mantenidas alternadas con series de aceleración, rotaciones cada X vueltas (ej. varones cada 5, damas cada 2)\n' +
   '- PF (pesas): sentadilla profunda, 1/2 sentadilla, 1/4 sentadilla, peso muerto, clean, clean + jerk, subida/saltos a banca, estocadas (con salto o atrás), press banca. El bloque de PF suele cerrar con "circuito banda 3 vueltas: 3 empuje lateral ida y vuelta + 5 empuje curva explosivos"\n\n' +
-  'FORMATO DE SALIDA — responde SOLO con esto, sin explicaciones ni títulos extra, un bloque por día de LUNES a SÁBADO:\n' +
-  '**LUNES**\n' +
+  'FORMATO DE SALIDA — responde SOLO con esto, sin explicaciones ni títulos extra. Los 6 días NO son iguales entre sí: sigue ESTRICTAMENTE la estructura que corresponde a cada tipo de día que se muestra abajo — no repitas la estructura del lunes en todos los días.\n\n' +
+  'LUNES, MIÉRCOLES, VIERNES (pista + PF — usa el encabezado de fecha exacto que te dieron para ese día):\n' +
+  '**LUNES DD/MM/AA**\n' +
   '- **Alta Vel:** [ejercicio de velocidad], V x.x/D x.x, pausa micro X\' macro Y\'\n' +
   '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, pausa micro X\' macro Y\')*\n' +
   '- **Alta Fondo:** [ejercicio de fondo], V x.x/D x.x, recuperación X\'\n' +
   '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, recuperación X\')*\n' +
   '- **PF Alta Vel: [ejercicio %RM]** *(obs. Intermedia: [ejercicio %RM más bajo])*\n' +
-  '- **PF Alta Fondo: [ejercicio %RM]** *(obs. Intermedia: [ejercicio %RM más bajo])*\n' +
-  '(continúa igual MARTES a SÁBADO — martes y jueves sin PF; sábado con kilometraje de bici en vez de pista)\n';
+  '- **PF Alta Fondo: [ejercicio %RM]** *(obs. Intermedia: [ejercicio %RM más bajo])*\n\n' +
+  'MARTES, JUEVES (pista, SIN PF — NO incluyas ninguna línea de PF estos dos días):\n' +
+  '**MARTES DD/MM/AA**\n' +
+  '- **Alta Vel:** [ejercicio de velocidad], V x.x/D x.x, pausa micro X\' macro Y\'\n' +
+  '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, pausa micro X\' macro Y\')*\n' +
+  '- **Alta Fondo:** [ejercicio de fondo], V x.x/D x.x, recuperación X\'\n' +
+  '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, recuperación X\')*\n\n' +
+  'SÁBADO (SOLO kilometraje de bicicleta — NUNCA trabajo de pista este día, NUNCA PF este día, solo estas 2 líneas):\n' +
+  '**SÁBADO DD/MM/AA**\n' +
+  '- **Alta Vel:** Kilometraje bici XX-YYk (Patahual)\n' +
+  '- **Alta Fondo:** Kilometraje bici XX-YYk (Patahual)\n';
 
 // Ritmos base confirmados (los más rápidos = semana de Taper/competencia).
 // offsetSeg = cuántos segundos MÁS LENTO que el valor de Taper corresponde
@@ -2822,12 +2832,15 @@ function genProximaSemanaPendiente() {
   return null;
 }
 
-// Extrae el bloque de un día puntual ("**LUNES**" ... hasta el próximo
-// encabezado de día) de un texto de semana ya generado.
+// Extrae el bloque de un día puntual ("**LUNES**" o "**LUNES 21/09/26**"
+// ... hasta el próximo encabezado de día) de un texto de semana ya
+// generado. Matchea por el nombre del día al inicio del encabezado (no
+// exacto), para soportar tanto planes viejos (sin fecha) como nuevos
+// (con fecha en el encabezado).
 function genExtraerDiaDeTexto(texto, diaLabel) {
   if(!texto) return null;
   var dias = ['LUNES','MARTES','MIERCOLES','MIÉRCOLES','JUEVES','VIERNES','SABADO','SÁBADO','DOMINGO'];
-  var re = new RegExp('\\*\\*'+diaLabel+'\\*\\*([\\s\\S]*?)(?=\\*\\*(?:'+dias.join('|')+')\\*\\*|$)');
+  var re = new RegExp('\\*\\*'+diaLabel+'[^*\\n]*\\*\\*([\\s\\S]*?)(?=\\*\\*(?:'+dias.join('|')+')[^*\\n]*\\*\\*|$)');
   var m = texto.match(re);
   return m ? m[1].trim() : null;
 }
@@ -2911,11 +2924,28 @@ async function genGenerarProximaSemana() {
     : null;
   var resumenAnterior = semanaAnteriorGuardada ? genResumenSemanaAnterior(semanaAnteriorGuardada.texto) : '';
 
+  // Fechas reales de cada día de la semana (lunes a sábado). Se arman los
+  // encabezados YA LISTOS (ej. "**LUNES 21/09/26**") para que la IA los
+  // copie tal cual, en vez de depender de que "recuerde" armar el formato
+  // ella misma — más confiable que solo darle la instrucción.
+  var diasNombre = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
+  var tipoDia = ['con PF','SIN PF','con PF','SIN PF','con PF','SOLO BICI — sin PF, sin pista'];
+  var fechasSemana = diasNombre.map(function(nombre, i){
+    var d = new Date(s.inicio); d.setDate(d.getDate()+i);
+    var dd = (d.getDate()<10?'0':'')+d.getDate();
+    var mm = (d.getMonth()+1<10?'0':'')+(d.getMonth()+1);
+    var aa = String(d.getFullYear()).slice(-2);
+    return nombre+' '+dd+'/'+mm+'/'+aa;
+  });
+  var encabezadosListos = fechasSemana.map(function(f, i){ return '**'+f+'** ('+tipoDia[i]+')'; });
+
   var prompt = METODOLOGIA_PLANES_PROMPT
     + '\nDATOS DE ESTA SEMANA:\n'
     + '- Semana '+(idx+1)+' de '+pendiente.total+' hacia la competencia\n'
     + '- Fase: '+s.fase+(esUltimaDelBloque ? ' (compite el sábado de esta semana: '+s.competencia.name+')' : '')+'\n'
     + '- Ritmos objetivo (vuelta lanzada 200mts): Velocidad Alta '+ritmos.velAlta+', Velocidad Intermedia '+ritmos.velInt+', Fondo Alta '+ritmos.fonAlta+', Fondo Intermedia '+ritmos.fonInt+'\n'
+    + '\nIMPORTANTE — Para cada día usa EXACTAMENTE el encabezado en negrita que se muestra (cópialo tal cual, en ese orden, sin cambiar la fecha). Lo que va entre paréntesis NO es parte del encabezado, es solo para indicarte qué estructura de día usar (ver FORMATO DE SALIDA arriba):\n'
+    + encabezadosListos.join('\n') + '\n'
     + '- Genera de LUNES a SÁBADO (domingo descanso, no lo incluyas).\n'
     + (esUltimaDelBloque ? '- Es semana precompetitiva: reduce volumen, mantén algo de intensidad, sin PF salvo el lunes.\n' : '')
     + (resumenAnterior ? '\nEJERCICIOS PRINCIPALES DE LA SEMANA ANTERIOR (no los repitas igual — varía y progresa naturalmente desde acá):\n'+resumenAnterior+'\n' : '');
@@ -3061,6 +3091,14 @@ function planHoyShow(grupo) {
   var el = document.getElementById('plan-hoy-content');
   if(!el) return;
 
+  // Día + fecha de hoy, calculados acá directamente (no depende de que
+  // planHoyInit() haya corrido antes) para que siempre se vea en la tarjeta.
+  var _mesesLbl = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var _hoyDate = new Date();
+  var fechaHoyLabel = (diasLabel[diaActual]||diaActual) + ', ' + _hoyDate.getDate() + ' de ' + _mesesLbl[_hoyDate.getMonth()];
+  var fEl = document.getElementById('plan-hoy-fecha');
+  if(fEl) fEl.textContent = fechaHoyLabel;
+
   // Prioridad 1: buscar el día de hoy dentro de un plan generado por IA
   // (semana que cubre la fecha de hoy). Si existe, se muestra completo
   // (incluye Alta Vel + Alta Fondo + obs. Intermedia ya en el mismo texto)
@@ -3079,7 +3117,7 @@ function planHoyShow(grupo) {
         el.innerHTML = '<div class="card">'
           + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">'
           + '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">Generado por IA — Semana '+(semanaGen.semanaIdx+1)+' de '+semanaGen.totalSemanas+' · '+escapeHtml(semanaGen.fase)+'</div>'
-          + '<div style="font-size:.65rem;color:var(--t3)">'+(diasLabel[diaActual]||diaActual)+'</div>'
+          + '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(fechaHoyLabel)+'</div>'
           + '</div>'
           + '<div class="plan-dia-text" style="white-space:pre-wrap">'+escapeHtml(bloqueDia)+'</div>'
           + '</div>';
@@ -3128,7 +3166,7 @@ function planHoyShow(grupo) {
   var html = '<div class="card">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">';
   html += '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">'+glabel+'</div>';
-  html += '<div style="font-size:.65rem;color:var(--t3)">'+(diasLabel[diaActual]||diaActual)+'</div>';
+  html += '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(fechaHoyLabel)+'</div>';
   html += '</div>';
   html += bloques;
   html += '</div>';
