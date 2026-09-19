@@ -3137,7 +3137,14 @@ function planHoyMostrarDia(diaKey) {
   lunesSemana.setHours(0,0,0,0);
   var semanaKeyActual = lunesSemana.toISOString().slice(0,10);
 
-  var etiquetaDia = diasLabel[diaKey] + (esHoy ? ' (hoy)' : '');
+  // Fecha real del día seleccionado (no la de hoy) — ej. "Martes 22/09/26".
+  var offsetDia = diasKeyOrden.indexOf(diaKey);
+  var fechaDiaSel = new Date(lunesSemana);
+  fechaDiaSel.setDate(lunesSemana.getDate() + offsetDia);
+  var ddSel = (fechaDiaSel.getDate()<10?'0':'')+fechaDiaSel.getDate();
+  var mmSel = (fechaDiaSel.getMonth()+1<10?'0':'')+(fechaDiaSel.getMonth()+1);
+  var aaSel = String(fechaDiaSel.getFullYear()).slice(-2);
+  var etiquetaDia = diasLabel[diaKey]+' '+ddSel+'/'+mmSel+'/'+aaSel + (esHoy ? ' (hoy)' : '');
 
   // Prioridad 1: el plan generado por IA de la semana actual. Se busca
   // primero por clave exacta (lunes de la semana) y, si no matchea, por
