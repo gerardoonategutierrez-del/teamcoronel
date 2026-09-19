@@ -882,13 +882,16 @@ body {
 
   <!-- VER HOY -->
   <div id="planes-tab-ver">
-    <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('arv')" id="phb-arv">⚡ AR Vel</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('arf')" id="phb-arf">🏃 AR Fondo</button>
-      <button class="btn btn-secondary btn-sm" onclick="planHoyShow('int')" id="phb-int">🔷 Intermedio</button>
+    <div style="display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('lunes')" id="phd-lunes">Lunes</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('martes')" id="phd-martes">Martes</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('miercoles')" id="phd-miercoles">Miércoles</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('jueves')" id="phd-jueves">Jueves</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('viernes')" id="phd-viernes">Viernes</button>
+      <button class="btn btn-secondary btn-sm" onclick="planHoyMostrarDia('sabado')" id="phd-sabado">Sábado</button>
     </div>
     <div id="plan-hoy-fecha" style="font-size:.72rem;color:var(--t3);margin-bottom:.75rem"></div>
-    <div id="plan-hoy-content"><div class="empty"><div class="empty-icon">📅</div>Selecciona un grupo</div></div>
+    <div id="plan-hoy-content"><div class="empty"><div class="empty-icon">📅</div>Selecciona un día</div></div>
   </div>
 
   <!-- GENERAR PLAN (automático, según calendario de competencias) -->
@@ -2255,6 +2258,12 @@ function planHoyInit(){
   var hoy=new Date();
   var el=document.getElementById('plan-hoy-fecha');
   if(el) el.textContent=dias[hoy.getDay()]+', '+hoy.getDate()+' de '+meses[hoy.getMonth()];
+
+  // Auto-selecciona el día de hoy (lunes=0 ... sábado=5; si es domingo, no hay botón — deja el lunes de la semana seleccionado)
+  var diasKeyOrden = ['lunes','martes','miercoles','jueves','viernes','sabado'];
+  var idxHoy = (hoy.getDay()+6)%7;
+  var diaKeyInicial = idxHoy<=5 ? diasKeyOrden[idxHoy] : 'lunes';
+  if(typeof planHoyMostrarDia === 'function') planHoyMostrarDia(diaKeyInicial);
 }
 
 
@@ -3074,67 +3083,62 @@ function eliminarPlanGenerado(id) {
   toast('Semana eliminada');
 }
 
-// PLAN DE HOY — updated to show AR + INT adjustment
-// Alto Rendimiento SÍ se especializa por disciplina (velocidad/fondo).
-// Intermedio NO se especializa (incluye a los ex-Formativo), así que ve
-// ambos bloques (usando el "ajuste intermedio" que ya trae cada plan por día).
-function planHoyShow(grupo) {
-  ['arv','arf','int'].forEach(function(g){
-    var b = document.getElementById('phb-'+g);
-    if(b){ b.classList.toggle('btn-primary', g===grupo); b.classList.toggle('btn-secondary', g!==grupo); }
+// PLAN DE HOY — navegación por día (Lunes a Sábado) en vez de por grupo.
+// Un solo día muestra TODO lo de ese día (Alta Vel + Alta Fondo + obs.
+// Intermedia, ya vienen juntos en el texto generado), así que ya no hace
+// falta elegir grupo — mostraba lo mismo en las 3 pestañas de grupo.
+function planHoyMostrarDia(diaKey) {
+  var diasKeyOrden = ['lunes','martes','miercoles','jueves','viernes','sabado'];
+  diasKeyOrden.forEach(function(k){
+    var b = document.getElementById('phd-'+k);
+    if(b){ b.classList.toggle('btn-primary', k===diaKey); b.classList.toggle('btn-secondary', k!==diaKey); }
   });
 
-  var diasKey = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
-  var diaActual = diasKey[new Date().getDay()];
-  var diasLabel = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado',domingo:'Domingo'};
-  var glabel = {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'}[grupo];
+  var diasLabel = {lunes:'Lunes',martes:'Martes',miercoles:'Miércoles',jueves:'Jueves',viernes:'Viernes',sabado:'Sábado'};
+  var diaLabelMayus = {lunes:'LUNES',martes:'MARTES',miercoles:'MIERCOLES',jueves:'JUEVES',viernes:'VIERNES',sabado:'SABADO'}[diaKey];
   var el = document.getElementById('plan-hoy-content');
   if(!el) return;
 
-  // Día + fecha de hoy, calculados acá directamente (no depende de que
-  // planHoyInit() haya corrido antes) para que siempre se vea en la tarjeta.
-  var _mesesLbl = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var _hoyDate = new Date();
-  var fechaHoyLabel = (diasLabel[diaActual]||diaActual) + ', ' + _hoyDate.getDate() + ' de ' + _mesesLbl[_hoyDate.getMonth()];
-  var fEl = document.getElementById('plan-hoy-fecha');
-  if(fEl) fEl.textContent = fechaHoyLabel;
+  var hoy = new Date();
+  var idxHoy = (hoy.getDay()+6)%7; // lunes=0 ... sábado=5, domingo=6
+  var esHoy = idxHoy<=5 && diasKeyOrden[idxHoy]===diaKey;
 
-  // Prioridad 1: buscar el día de hoy dentro de un plan generado por IA
-  // (semana que cubre la fecha de hoy). Si existe, se muestra completo
-  // (incluye Alta Vel + Alta Fondo + obs. Intermedia ya en el mismo texto)
-  // y no se sigue con el sistema viejo.
-  if(diaActual !== 'domingo') {
-    var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
-    var diaLabelMayus = {lunes:'LUNES',martes:'MARTES',miercoles:'MIERCOLES',jueves:'JUEVES',viernes:'VIERNES',sabado:'SABADO'}[diaActual];
-    var semanaGen = planesGenerados.find(function(p){
-      var ini = new Date(p.inicio+'T00:00:00'), fin = new Date(p.fin+'T00:00:00');
-      return hoyTs >= ini && hoyTs <= fin;
-    });
-    if(semanaGen) {
-      var bloqueDia = genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus)
-        || genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus.replace('MIERCOLES','MIÉRCOLES').replace('SABADO','SÁBADO'));
-      if(bloqueDia) {
-        el.innerHTML = '<div class="card">'
-          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">'
-          + '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">Generado por IA — Semana '+(semanaGen.semanaIdx+1)+' de '+semanaGen.totalSemanas+' · '+escapeHtml(semanaGen.fase)+'</div>'
-          + '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(fechaHoyLabel)+'</div>'
-          + '</div>'
-          + '<div class="plan-dia-text" style="white-space:pre-wrap">'+escapeHtml(bloqueDia)+'</div>'
-          + '</div>';
-        return;
-      }
+  // Semana "actual": el lunes de esta semana calendario (misma fórmula
+  // que usa el generador), así el botón de cada día siempre muestra la
+  // semana que corresponde aunque hoy sea domingo.
+  var lunesSemana = new Date(hoy);
+  lunesSemana.setDate(hoy.getDate() - ((hoy.getDay()+6)%7));
+  lunesSemana.setHours(0,0,0,0);
+  var semanaKeyActual = lunesSemana.toISOString().slice(0,10);
+
+  var etiquetaDia = diasLabel[diaKey] + (esHoy ? ' (hoy)' : '');
+
+  // Prioridad 1: el plan generado por IA de la semana actual.
+  var semanaGen = planesGenerados.find(function(p){ return p.semanaKey === semanaKeyActual; });
+  if(semanaGen) {
+    var bloqueDia = genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus)
+      || genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus.replace('MIERCOLES','MIÉRCOLES').replace('SABADO','SÁBADO'));
+    if(bloqueDia) {
+      el.innerHTML = '<div class="card">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">'
+        + '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">Generado por IA — Semana '+(semanaGen.semanaIdx+1)+' de '+semanaGen.totalSemanas+' · '+escapeHtml(semanaGen.fase)+'</div>'
+        + '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(etiquetaDia)+'</div>'
+        + '</div>'
+        + '<div class="plan-dia-text" style="white-space:pre-wrap">'+escapeHtml(bloqueDia)+'</div>'
+        + '</div>';
+      return;
     }
   }
 
-  var esAR = (grupo==='arv'||grupo==='arf');
-  var discsAMostrar = esAR ? [ (grupo==='arv'?'velocidad':'fondo') ] : ['velocidad','fondo'];
-
+  // Fallback: sistema antiguo (planesDisciplina) — como ya no hay grupo
+  // elegido, se muestran Velocidad y Fondo (Alto Rendimiento) juntos,
+  // cada uno con su ajuste de Intermedia si lo tiene.
   function renderBloque(disc){
     var planes = planesDisciplina[disc] || {};
     var semanas = Object.keys(planes);
     if(!semanas.length) return '';
     var ultima = semanas[semanas.length-1];
-    var planDia = (planes[ultima]||{})[diaActual] || (planes[ultima]||{}).lunes;
+    var planDia = (planes[ultima]||{})[diaKey];
     if(!planDia) return '';
 
     var esVelocidad = disc === 'velocidad';
@@ -3143,11 +3147,11 @@ function planHoyShow(grupo) {
     bloque += (esVelocidad?'⚡ Velocidad':'🏃 Fondo')+' · Semana '+ultima+'</div>';
 
     if(typeof planDia === 'object') {
-      if(esAR) {
-        bloque += '<div class="plan-dia-text">'+planDia.ar+'</div>';
-      } else {
-        // Intermedio / Formativo: usan el ajuste intermedio del plan
-        bloque += '<div class="plan-dia-text">'+(planDia.int||planDia.ar)+'</div>';
+      bloque += '<div class="plan-dia-text">'+planDia.ar+'</div>';
+      if(planDia.int) {
+        bloque += '<div style="background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.25);border-radius:6px;padding:.6rem .75rem;margin-top:.4rem">';
+        bloque += '<div style="font-size:.6rem;font-weight:700;color:var(--blue);margin-bottom:.25rem">📋 AJUSTE INTERMEDIO</div>';
+        bloque += '<div class="plan-dia-text" style="font-size:.75rem;color:var(--t2)">'+planDia.int+'</div></div>';
       }
     } else {
       bloque += '<div class="plan-dia-text">'+planDia+'</div>';
@@ -3156,17 +3160,17 @@ function planHoyShow(grupo) {
     return bloque;
   }
 
-  var bloques = discsAMostrar.map(renderBloque).join('');
+  var bloques = ['velocidad','fondo'].map(renderBloque).join('');
 
   if(!bloques) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>No hay plan cargado para este grupo</div>';
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>No hay plan generado ni cargado para '+diasLabel[diaKey]+'</div>';
     return;
   }
 
   var html = '<div class="card">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">';
-  html += '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">'+glabel+'</div>';
-  html += '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(fechaHoyLabel)+'</div>';
+  html += '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">Sistema antiguo (sin plan generado esta semana)</div>';
+  html += '<div style="font-size:.65rem;color:var(--t3)">'+escapeHtml(etiquetaDia)+'</div>';
   html += '</div>';
   html += bloques;
   html += '</div>';
