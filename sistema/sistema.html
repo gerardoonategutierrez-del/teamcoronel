@@ -871,11 +871,11 @@ body {
 ════════════════════════════ -->
 <section class="sec" id="sec-planes">
   <div class="page-title">Planes de Entrenamientos</div>
-  <div class="page-sub">Ver plan de hoy · Cargar plan semanal · Planes del Asistente IA</div>
+  <div class="page-sub">Ver plan de hoy · Generar plan semanal por IA · Planes generados</div>
 
   <div class="tabs">
     <button class="tab on" onclick="switchPlanesTab('ver',this)">📅 Plan de Hoy</button>
-    <button class="tab"    onclick="switchPlanesTab('cargar',this)">📥 Cargar Plan</button>
+    <button class="tab"    onclick="switchPlanesTab('cargar',this)">🎯 Generar Plan</button>
     <button class="tab"    onclick="switchPlanesTab('guardados',this)">📋 Guardados</button>
     <button class="tab"    onclick="switchPlanesTab('ia',this)">🧠 IA</button>
   </div>
@@ -891,37 +891,19 @@ body {
     <div id="plan-hoy-content"><div class="empty"><div class="empty-icon">📅</div>Selecciona un grupo</div></div>
   </div>
 
-  <!-- CARGAR PLAN -->
+  <!-- GENERAR PLAN (automático, según calendario de competencias) -->
   <div id="planes-tab-cargar" style="display:none">
-    <div class="card" style="margin-bottom:.75rem">
-      <div class="fi-row">
-        <div class="fg">
-          <label class="fl">Fecha / Semana</label>
-          <input class="fi" id="plan-semana" placeholder="Ej: 7-11 julio 2026">
-        </div>
-        <div class="fg" style="display:flex;align-items:flex-end">
-          <div style="font-size:.7rem;color:var(--t3);line-height:1.4">
-            Pega el plan completo.<br>La app separa días y genera ajuste INT.
-          </div>
-        </div>
-      </div>
-      <div class="fg">
-        <label class="fl">Plan semanal completo</label>
-        <textarea class="fi" id="plan-texto" rows="16" style="font-size:.75rem;line-height:1.6;font-family:monospace" placeholder="L U N E S&#10;Calentamiento 12mn&#10;VELOCIDAD&#10;3x3x100 Mtrs...&#10;FONDO&#10;Pirámide...&#10;&#10;M A R T E S&#10;..."></textarea>
-      </div>
-      <div style="display:flex;gap:.6rem;margin-bottom:.6rem">
-        <button class="btn btn-secondary" onclick="previsualizarPlan()">👁 Previsualizar</button>
-        <button class="btn btn-primary" style="flex:1" onclick="guardarPlanV9()">💾 Guardar Plan</button>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.25rem">
-        <div style="font-size:.65rem;color:var(--t3);margin-bottom:.4rem">O importa un plan ya procesado (JSON)</div>
-        <label class="btn btn-secondary btn-full" style="cursor:pointer;justify-content:center">
-          📂 Importar JSON procesado
-          <input type="file" accept=".json" style="display:none" onchange="importarPlanJSON(this)">
-        </label>
-      </div>
+    <div style="font-size:.7rem;color:var(--t3);margin-bottom:.75rem">
+      El sistema arma solo la temporada completa a partir de las fechas de <b>Próximas Competencias</b> del Dashboard.
+      No hace falta elegir nada: genera la próxima semana pendiente. Si cambias una fecha de competencia,
+      las semanas que todavía no generaste se ajustan solas la próxima vez que generes.
     </div>
-    <div id="plan-preview" style="display:none"></div>
+    <div id="gen-proxima-card"></div>
+    <div id="gen-resultado" style="display:none;margin-top:.75rem"></div>
+    <div style="margin-top:1rem">
+      <div class="stat-label" style="margin-bottom:.5rem">Calendario de la temporada</div>
+      <div id="gen-calendario-lista"></div>
+    </div>
   </div>
 
   <!-- PLANES GUARDADOS -->
@@ -929,13 +911,12 @@ body {
     <div id="planes-guardados-lista"><div class="empty"><div class="empty-icon">📋</div>No hay planes guardados</div></div>
   </div>
 
-  <!-- PLANES DEL ASISTENTE IA (bicicleta / consultas puntuales, individuales o de grupo) -->
+  <!-- PLANES GENERADOS POR IA (semana a semana, según el calendario de competencias) -->
   <div id="planes-tab-ia" style="display:none">
     <div style="font-size:.7rem;color:var(--t3);margin-bottom:.75rem">
-      Acá quedan centralizados los planes y respuestas que guardaste desde el 🧠 Asistente de Entrenamiento
-      (individuales o de grupo completo) — en vez de quedar sueltos en cada ficha.
+      Acá quedan los planes semanales generados automáticamente desde "🎯 Generar Plan", agrupados por competencia.
     </div>
-    <div id="planes-ia-lista"><div class="empty"><div class="empty-icon">🧠</div>Todavía no guardaste ningún plan del Asistente IA</div></div>
+    <div id="planes-ia-lista"><div class="empty"><div class="empty-icon">🧠</div>Todavía no se generó ningún plan</div></div>
   </div>
 </section>
 
@@ -1381,7 +1362,8 @@ var planesDisciplina = {
   }
 };
 var rmData={};
-var planesIA=[]; // Planes/respuestas guardadas desde el Asistente de Entrenamiento IA
+var planesIA=[]; // Legado: respuestas sueltas del Asistente (ya no se muestran en "Planes de Entrenamientos"; el botón Guardar ahora escribe solo en la ficha)
+var planesGenerados=[]; // Planes semanales generados automáticamente por IA según el calendario de competencias (COMPS)
                   // (individuales o de grupo), centralizadas acá en vez de repartidas
                   // por cada ficha de deportista.
 var weekly={};
@@ -1425,6 +1407,7 @@ function _saveDataCore() {
       weekly:weekly, rmData:rmData, COMPS:COMPS,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
       antropometria:ANTROPOMETRIA, planesIA:planesIA,
+      planesGenerados:planesGenerados,
     }));
   } catch(e) { console.warn('save failed',e); }
 }
@@ -1444,6 +1427,7 @@ function loadData() {
     if(d.rmData) rmData=d.rmData;
     if(d.COMPS) COMPS=d.COMPS;
     if(d.planesDisciplina) Object.assign(planesDisciplina, d.planesDisciplina);
+    if(d.planesGenerados) planesGenerados = d.planesGenerados;
     if(d.antropometria) {
       Object.keys(d.antropometria).forEach(function(k){
         var entry = d.antropometria[k];
@@ -2722,6 +2706,280 @@ function eliminarPlanGuardado(sem) {
 
 
 // PLANES TABS
+// ══════════════════════════════════════════════════════════════
+// GENERADOR AUTOMÁTICO DE PLANES SEMANALES (por IA, sin preguntar nada)
+// ══════════════════════════════════════════════════════════════
+// La temporada completa se arma sola a partir de COMPS (el mismo array
+// que alimenta "Próximas Competencias" en el Dashboard). No hay selector:
+// siempre se ofrece generar la próxima semana pendiente. Como el cálculo
+// de fases se rehace desde COMPS cada vez (nunca se guarda "fijo"), si
+// Gerardo edita una fecha de competencia las semanas que todavía no se
+// generaron se ajustan solas la próxima vez que se genera algo. Las
+// semanas ya generadas y guardadas quedan como registro histórico y no
+// se recalculan retroactivamente.
+
+var METODOLOGIA_PLANES_PROMPT =
+  'Eres el asistente de entrenamiento del Team Coronel, club de patín carrera en Coronel, sur de Chile.\n' +
+  'Tu tarea es generar UNA semana de entrenamiento de patín/pesas siguiendo exactamente estos criterios:\n\n' +
+  'GRUPOS (solo 2 planes reales por día, más una observación de ajuste):\n' +
+  '- Alta Vel: SOLO bloques de Velocidad. Fondo mínimo, solo base sin cronómetro.\n' +
+  '- Alta Fondo: SOLO bloques de Fondo. Velocidad mínima, solo técnica de salidas.\n' +
+  '- Intermedia: NO es un plan aparte. Debajo de cada bloque de Alta Vel/Alta Fondo agrega una línea "(obs. Intermedia: ...)" con el mismo ejercicio, aprox. 70-75% del volumen de Alta.\n\n' +
+  'CRITERIOS FIJOS DEL CLUB:\n' +
+  '- Todo el trabajo de patín es en pista (no hay ruta de patín disponible).\n' +
+  '- PF (pesas) fijo lunes/miércoles/viernes. En la semana precompetitiva, sin PF salvo el lunes.\n' +
+  '- Sin sesiones AM entre semana (deportistas en período escolar). El sábado sí puede ser AM.\n' +
+  '- Domingo siempre es descanso — no lo incluyas en la salida.\n' +
+  '- Notación de ritmos: "V" = tiempo objetivo varones, "D" = tiempo objetivo damas, por vuelta lanzada de 200mts en pista. Usa EXACTAMENTE los ritmos que se te dan más abajo, no inventes otros.\n' +
+  '- Toda serie de velocidad debe indicar pausa: "pausa micro X\' macro Y\'". Todo bloque de Fondo en series debe indicar "recuperación X\'". Series cortas (75-150mts) usan solo "pausa micro X\'".\n' +
+  '- No mezcles disciplinas: Alta Vel no hace bloques de Fondo con cronómetro, Alta Fondo no hace bloques de Velocidad con cronómetro.\n\n' +
+  'BANCO DE EJERCICIOS REALES (usados por el entrenador de referencia del club durante 3 años — elige y combina de acá, no inventes fuera de esta lista salvo variaciones menores de la misma familia):\n' +
+  '- Velocidad: lanzados de 100/200/400mts, lastre de frecuencia, lastre con banda elástica, salidas detenidas (individuales y grupales), relevos de 100-300mts, tras moto (remolcada), pirámide "Escalera" (repeticiones descendentes con tiempo decreciente), circuito de vallas (vallas media + sprint)\n' +
+  '- Fondo: series por distancia fija (ej. 4x3000, 6x5000, 3x8k progresivos), pirámide media (2000→1200) o larga (10 a 1 vueltas), giros progresivos mantenidos, series mantenidas alternadas con series de aceleración, rotaciones cada X vueltas (ej. varones cada 5, damas cada 2)\n' +
+  '- PF (pesas): sentadilla profunda, 1/2 sentadilla, 1/4 sentadilla, peso muerto, clean, clean + jerk, subida/saltos a banca, estocadas (con salto o atrás), press banca. El bloque de PF suele cerrar con "circuito banda 3 vueltas: 3 empuje lateral ida y vuelta + 5 empuje curva explosivos"\n\n' +
+  'FORMATO DE SALIDA — responde SOLO con esto, sin explicaciones ni títulos extra, un bloque por día de LUNES a SÁBADO:\n' +
+  '**LUNES**\n' +
+  '- **Alta Vel:** [ejercicio de velocidad], V x.x/D x.x, pausa micro X\' macro Y\'\n' +
+  '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, pausa micro X\' macro Y\')*\n' +
+  '- **Alta Fondo:** [ejercicio de fondo], V x.x/D x.x, recuperación X\'\n' +
+  '  *(obs. Intermedia: [mismo ejercicio ajustado], V x.x/D x.x, recuperación X\')*\n' +
+  '- **PF Alta Vel: [ejercicio %RM]** *(obs. Intermedia: [ejercicio %RM más bajo])*\n' +
+  '- **PF Alta Fondo: [ejercicio %RM]** *(obs. Intermedia: [ejercicio %RM más bajo])*\n' +
+  '(continúa igual MARTES a SÁBADO — martes y jueves sin PF; sábado con kilometraje de bici en vez de pista)\n';
+
+// Ritmos base confirmados (los más rápidos = semana de Taper/competencia).
+// offsetSeg = cuántos segundos MÁS LENTO que el valor de Taper corresponde
+// a la semana según su distancia a la competencia objetivo.
+function genRitmosSemana(offsetSeg) {
+  function suma(v, off){ return (Math.round((v+off)*10)/10).toFixed(1).replace('.',','); }
+  var base = { velAltaV:17.5, velAltaD:18.0, velIntV:19.0, velIntD:20.0,
+               fonAltaV:18.5, fonAltaD:19.0, fonIntV:19.0, fonIntD:21.0 };
+  return {
+    velAlta: 'V'+suma(base.velAltaV,offsetSeg)+'/D'+suma(base.velAltaD,offsetSeg),
+    velInt:  'V'+suma(base.velIntV,offsetSeg)+'/D'+suma(base.velIntD,offsetSeg),
+    fonAlta: 'V'+suma(base.fonAltaV,offsetSeg)+'/D'+suma(base.fonAltaD,offsetSeg),
+    fonInt:  'V'+suma(base.fonIntV,offsetSeg)+'/D'+suma(base.fonIntD,offsetSeg)
+  };
+}
+
+// Arma la línea de tiempo continua de semanas (lunes a sábado) desde la
+// semana actual hasta la última competencia cargada en COMPS, asignando
+// a cada semana su competencia objetivo (la próxima fecha en COMPS que
+// cae en o después de ese sábado) y su fase/offset de ritmo, agrupando
+// por bloques consecutivos que apuntan a la misma competencia (últimas
+// 3 semanas de cada bloque: Pico → Descenso → Taper; antes: Acumulación).
+function genCalendarioSemanas() {
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - ((hoy.getDay()+6)%7));
+
+  var comps = (COMPS||[]).map(function(c){ return { fecha:new Date(c.dates[0]+'T00:00:00'), obj:c }; })
+    .sort(function(a,b){ return a.fecha - b.fecha; });
+  if(!comps.length) return [];
+  var ultima = comps[comps.length-1].fecha;
+
+  var semanas = [];
+  var cursor = new Date(lunes);
+  var guard = 0;
+  while(cursor <= ultima && guard < 60) {
+    var sabado = new Date(cursor); sabado.setDate(cursor.getDate()+5);
+    var objetivo = comps.find(function(c){ return c.fecha >= cursor; });
+    if(!objetivo) break;
+    semanas.push({ inicio:new Date(cursor), fin:sabado, competencia:objetivo.obj,
+                    semanaKey: cursor.toISOString().slice(0,10) });
+    cursor.setDate(cursor.getDate()+7);
+    guard++;
+  }
+
+  var bloques = [];
+  semanas.forEach(function(s){
+    var ult = bloques[bloques.length-1];
+    if(ult && ult.competencia.dates[0]===s.competencia.dates[0]) ult.semanas.push(s);
+    else bloques.push({ competencia:s.competencia, semanas:[s] });
+  });
+  bloques.forEach(function(b){
+    var n = b.semanas.length;
+    b.semanas.forEach(function(s,i){
+      var faltan = n - 1 - i;
+      if(faltan===0){ s.fase='Precompetitiva / Taper'; s.offset=0; }
+      else if(faltan===1){ s.fase='Inicio de descenso'; s.offset=0.3; }
+      else if(faltan===2){ s.fase='Pico de volumen'; s.offset=0.6; }
+      else { s.fase=(i%2===0)?'Cola de Acumulación':'Máximo volumen'; s.offset=1.0; }
+    });
+  });
+
+  return semanas;
+}
+
+function genFormatoFecha(d){ return d.getDate()+'/'+(d.getMonth()+1); }
+
+function genProximaSemanaPendiente() {
+  var semanas = genCalendarioSemanas();
+  for(var i=0;i<semanas.length;i++){
+    var existe = planesGenerados.some(function(p){ return p.semanaKey===semanas[i].semanaKey; });
+    if(!existe) return { semana:semanas[i], index:i, total:semanas.length };
+  }
+  return null;
+}
+
+// Extrae el bloque de un día puntual ("**LUNES**" ... hasta el próximo
+// encabezado de día) de un texto de semana ya generado.
+function genExtraerDiaDeTexto(texto, diaLabel) {
+  if(!texto) return null;
+  var dias = ['LUNES','MARTES','MIERCOLES','MIÉRCOLES','JUEVES','VIERNES','SABADO','SÁBADO','DOMINGO'];
+  var re = new RegExp('\\*\\*'+diaLabel+'\\*\\*([\\s\\S]*?)(?=\\*\\*(?:'+dias.join('|')+')\\*\\*|$)');
+  var m = texto.match(re);
+  return m ? m[1].trim() : null;
+}
+
+// Arma un resumen CORTO (no el texto completo) de los ejercicios
+// principales de Alta Vel/Alta Fondo de la semana anterior, para dársela
+// de contexto a la IA y que varíe/progrese en vez de repetir igual —
+// sin gastar tiempo/tokens de más mandando la semana completa.
+function genResumenSemanaAnterior(texto) {
+  if(!texto) return '';
+  var dias = [['LUNES','Lunes'],['MARTES','Martes'],['MIERCOLES','Miércoles'],['MIÉRCOLES','Miércoles'],
+              ['JUEVES','Jueves'],['VIERNES','Viernes'],['SABADO','Sábado'],['SÁBADO','Sábado']];
+  var vistos = {};
+  var lineas = [];
+  dias.forEach(function(par){
+    var clave = par[1];
+    if(vistos[clave]) return; // evita duplicar MIERCOLES/MIÉRCOLES y SABADO/SÁBADO
+    var bloque = genExtraerDiaDeTexto(texto, par[0]);
+    if(!bloque) return;
+    vistos[clave] = true;
+    var velM = bloque.match(/\*\*Alta Vel:?\*\*\s*([^,\n]+)/);
+    var fonM = bloque.match(/\*\*Alta Fondo:?\*\*\s*([^,\n]+)/);
+    var partes = [];
+    if(velM) partes.push('Vel: '+velM[1].trim());
+    if(fonM) partes.push('Fondo: '+fonM[1].trim());
+    if(partes.length) lineas.push(clave+' — '+partes.join(' / '));
+  });
+  return lineas.join('\n');
+}
+
+function genRenderEstado() {
+  var card = document.getElementById('gen-proxima-card');
+  var lista = document.getElementById('gen-calendario-lista');
+  if(!card || !lista) return;
+
+  var semanas = genCalendarioSemanas();
+  if(!semanas.length) {
+    card.innerHTML = '<div class="card" style="color:var(--t3);font-size:.78rem">No hay competencias futuras cargadas en "Próximas Competencias" (COMPS) — agrega fechas para que el sistema pueda generar la temporada.</div>';
+    lista.innerHTML = '';
+    return;
+  }
+
+  var pendiente = genProximaSemanaPendiente();
+  if(!pendiente) {
+    card.innerHTML = '<div class="card" style="color:var(--t3);font-size:.78rem">✓ Ya generaste todas las semanas hasta la última competencia cargada.</div>';
+  } else {
+    var s = pendiente.semana;
+    card.innerHTML = '<div class="card">'
+      + '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase;margin-bottom:.3rem">Próxima semana a generar</div>'
+      + '<div style="font-weight:600;font-size:.9rem">Semana '+(pendiente.index+1)+' de '+pendiente.total+' — '+genFormatoFecha(s.inicio)+' al '+genFormatoFecha(s.fin)+'</div>'
+      + '<div style="font-size:.72rem;color:var(--t3);margin:.25rem 0 .75rem">Fase: '+s.fase+' · Objetivo: '+escapeHtml(s.competencia.name)+' ('+(s.competencia.level||'')+') — '+genFormatoFecha(new Date(s.competencia.dates[0]+'T00:00:00'))+'</div>'
+      + '<button class="btn btn-primary btn-full" onclick="genGenerarProximaSemana()">🤖 Generar esta semana</button>'
+      + '</div>';
+  }
+
+  lista.innerHTML = semanas.map(function(s,i){
+    var generada = planesGenerados.some(function(p){ return p.semanaKey===s.semanaKey; });
+    return '<div class="card" style="margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center">'
+      + '<div><div style="font-weight:600;font-size:.8rem">Semana '+(i+1)+' — '+genFormatoFecha(s.inicio)+' al '+genFormatoFecha(s.fin)+'</div>'
+      + '<div style="font-size:.62rem;color:var(--t3);margin-top:.1rem">'+s.fase+' · '+escapeHtml(s.competencia.name)+' '+genFormatoFecha(new Date(s.competencia.dates[0]+'T00:00:00'))+'</div></div>'
+      + (generada ? '<span class="badge badge-green" style="font-size:.62rem">✓ Generada</span>' : '<span class="badge" style="font-size:.62rem;color:var(--t3)">Pendiente</span>')
+      + '</div>';
+  }).join('');
+}
+
+async function genGenerarProximaSemana() {
+  var pendiente = genProximaSemanaPendiente();
+  if(!pendiente) { toast('No hay semanas pendientes','err'); return; }
+  var s = pendiente.semana;
+  var idx = pendiente.index;
+  var ritmos = genRitmosSemana(s.offset);
+  var esUltimaDelBloque = s.fase === 'Precompetitiva / Taper';
+
+  // Continuidad: si ya existe una semana anterior generada, se le pasa a
+  // la IA un resumen corto de sus ejercicios principales para que varíe
+  // y progrese en vez de repetir lo mismo (cada semana es una llamada
+  // nueva sin memoria de las anteriores).
+  var semanasTodas = genCalendarioSemanas();
+  var semanaAnteriorGuardada = idx > 0 && semanasTodas[idx-1]
+    ? planesGenerados.find(function(p){ return p.semanaKey === semanasTodas[idx-1].semanaKey; })
+    : null;
+  var resumenAnterior = semanaAnteriorGuardada ? genResumenSemanaAnterior(semanaAnteriorGuardada.texto) : '';
+
+  var prompt = METODOLOGIA_PLANES_PROMPT
+    + '\nDATOS DE ESTA SEMANA:\n'
+    + '- Semana '+(idx+1)+' de '+pendiente.total+' hacia la competencia\n'
+    + '- Fase: '+s.fase+(esUltimaDelBloque ? ' (compite el sábado de esta semana: '+s.competencia.name+')' : '')+'\n'
+    + '- Ritmos objetivo (vuelta lanzada 200mts): Velocidad Alta '+ritmos.velAlta+', Velocidad Intermedia '+ritmos.velInt+', Fondo Alta '+ritmos.fonAlta+', Fondo Intermedia '+ritmos.fonInt+'\n'
+    + '- Genera de LUNES a SÁBADO (domingo descanso, no lo incluyas).\n'
+    + (esUltimaDelBloque ? '- Es semana precompetitiva: reduce volumen, mantén algo de intensidad, sin PF salvo el lunes.\n' : '')
+    + (resumenAnterior ? '\nEJERCICIOS PRINCIPALES DE LA SEMANA ANTERIOR (no los repitas igual — varía y progresa naturalmente desde acá):\n'+resumenAnterior+'\n' : '');
+
+  var resEl = document.getElementById('gen-resultado');
+  resEl.style.display = 'block';
+  resEl.innerHTML = '<div class="card"><div style="text-align:center;padding:2rem;color:var(--t3)">🤖 Generando semana '+(idx+1)+'...</div></div>';
+
+  try {
+    var resp = await fetch('/api/coach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt })
+    });
+    var data = await resp.json();
+    if(!resp.ok) {
+      resEl.innerHTML = '<div class="card" style="color:var(--red)">Error API: '+(data.error?data.error.message:resp.status)+'</div>';
+      return;
+    }
+    var textBlock = (data.content||[]).find(function(b){ return b.type==='text'; });
+    var texto = textBlock ? textBlock.text.trim() : '';
+    if(!texto) { resEl.innerHTML = '<div class="card" style="color:var(--red)">La IA no devolvió texto.</div>'; return; }
+
+    resEl.innerHTML = '<div class="card">'
+      + '<div style="font-size:.7rem;font-weight:700;color:var(--t3);margin-bottom:.6rem">SEMANA '+(idx+1)+' — '+s.fase+' (revisa y edita antes de guardar)</div>'
+      + '<textarea class="fi" id="gen-texto-semana" rows="18" style="font-size:.75rem;line-height:1.6;font-family:monospace">'+escapeHtml(texto)+'</textarea>'
+      + '<button class="btn btn-primary btn-full" style="margin-top:.6rem" onclick="genGuardarSemanaActual(\''+s.semanaKey+'\')">💾 Guardar esta semana</button>'
+      + '</div>';
+  } catch(e) {
+    resEl.innerHTML = '<div class="card" style="color:var(--red)">Error de conexión: '+e.message+'</div>';
+  }
+}
+
+function genGuardarSemanaActual(semanaKey) {
+  var ta = document.getElementById('gen-texto-semana');
+  if(!ta) return;
+  var texto = ta.value.trim();
+  if(!texto) { toast('No hay texto para guardar','err'); return; }
+
+  var semanas = genCalendarioSemanas();
+  var s = semanas.find(function(x){ return x.semanaKey===semanaKey; });
+  if(!s) { toast('No se pudo ubicar esta semana en el calendario actual','err'); return; }
+  var idx = semanas.indexOf(s);
+
+  planesGenerados = planesGenerados.filter(function(p){ return p.semanaKey !== semanaKey; });
+  planesGenerados.push({
+    id: Date.now(), ts: Date.now(),
+    semanaKey: semanaKey,
+    competenciaFecha: s.competencia.dates[0],
+    competenciaNombre: s.competencia.name + (s.competencia.level ? ' ('+s.competencia.level+')' : ''),
+    semanaIdx: idx, totalSemanas: semanas.length,
+    fase: s.fase,
+    inicio: s.semanaKey, fin: s.fin.toISOString().slice(0,10),
+    texto: texto
+  });
+
+  saveData();
+  document.getElementById('gen-resultado').style.display = 'none';
+  genRenderEstado();
+  buildPlanesIA();
+  toast('Semana guardada en Planes de Entrenamientos → IA ✓');
+}
+
+
 function switchPlanesTab(tab, btn) {
   ['ver','cargar','guardados','ia'].forEach(function(t){
     var el = document.getElementById('planes-tab-'+t);
@@ -2732,6 +2990,7 @@ function switchPlanesTab(tab, btn) {
   if(tab==='guardados') buildPlanesGuardados();
   if(tab==='ver') planHoyInit();
   if(tab==='ia') buildPlanesIA();
+  if(tab==='cargar') genRenderEstado();
 }
 
 // Escapa texto para insertarlo seguro dentro de innerHTML.
@@ -2741,38 +3000,48 @@ function escapeHtml(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// PLANES DEL ASISTENTE IA — centralizados acá (individuales o de grupo)
+// PLANES GENERADOS POR IA — agrupados por competencia, semana a semana
 function buildPlanesIA() {
   var el = document.getElementById('planes-ia-lista');
   if(!el) return;
-  if(!planesIA.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div>Todavía no guardaste ningún plan del Asistente IA</div>';
+  if(!planesGenerados.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div>Todavía no se generó ningún plan</div>';
     return;
   }
-  var ordenados = planesIA.slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
-  el.innerHTML = ordenados.map(function(p){
-    var destino = p.tipo === 'grupo'
-      ? '👥 ' + escapeHtml(p.grupoLabel || p.grupoKey || 'Grupo')
-      : '🧑 ' + escapeHtml(p.depNombre || 'Deportista');
-    return '<div class="card" style="margin-bottom:.6rem">'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.5rem">'
-      + '<div>'
-      + '<div style="font-weight:600;font-size:.8rem">'+destino+'</div>'
-      + '<div style="font-size:.62rem;color:var(--t3);margin-top:.15rem">'+escapeHtml(p.fecha)+'</div>'
-      + '</div>'
-      + '<button class="btn btn-danger btn-sm" onclick="eliminarPlanIA('+p.id+')">✕</button>'
-      + '</div>'
-      + '<div class="plan-dia-text" style="font-size:.78rem;white-space:pre-wrap">'+escapeHtml(p.texto)+'</div>'
-      + '</div>';
+  var porComp = {};
+  planesGenerados.forEach(function(p){
+    (porComp[p.competenciaFecha] = porComp[p.competenciaFecha] || []).push(p);
+  });
+  var fechas = Object.keys(porComp).sort();
+  el.innerHTML = fechas.map(function(f){
+    var items = porComp[f].slice().sort(function(a,b){ return a.semanaIdx - b.semanaIdx; });
+    var nombre = items[0].competenciaNombre || f;
+    var d = new Date(f+'T00:00:00');
+    var fLabel = d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+    var header = '<div style="font-size:.65rem;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin:.85rem 0 .4rem;text-transform:uppercase">'+escapeHtml(nombre)+' — '+fLabel+'</div>';
+    var cards = items.map(function(p){
+      return '<div class="card" style="margin-bottom:.6rem">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.5rem">'
+        + '<div>'
+        + '<div style="font-weight:600;font-size:.8rem">Semana '+(p.semanaIdx+1)+' de '+p.totalSemanas+'</div>'
+        + '<div style="font-size:.62rem;color:var(--t3);margin-top:.15rem">'+escapeHtml(p.fase)+'</div>'
+        + '</div>'
+        + '<button class="btn btn-danger btn-sm" onclick="eliminarPlanGenerado('+p.id+')">✕</button>'
+        + '</div>'
+        + '<div class="plan-dia-text" style="font-size:.78rem;white-space:pre-wrap">'+escapeHtml(p.texto)+'</div>'
+        + '</div>';
+    }).join('');
+    return header + cards;
   }).join('');
 }
 
-function eliminarPlanIA(id) {
-  if(!confirm('¿Eliminar este plan guardado?')) return;
-  planesIA = planesIA.filter(function(p){ return p.id !== id; });
+function eliminarPlanGenerado(id) {
+  if(!confirm('¿Eliminar esta semana guardada?')) return;
+  planesGenerados = planesGenerados.filter(function(p){ return p.id !== id; });
   saveData();
   buildPlanesIA();
-  toast('Plan eliminado');
+  genRenderEstado();
+  toast('Semana eliminada');
 }
 
 // PLAN DE HOY — updated to show AR + INT adjustment
@@ -2791,6 +3060,33 @@ function planHoyShow(grupo) {
   var glabel = {arv:'AR Velocidad',arf:'AR Fondo',int:'Intermedio'}[grupo];
   var el = document.getElementById('plan-hoy-content');
   if(!el) return;
+
+  // Prioridad 1: buscar el día de hoy dentro de un plan generado por IA
+  // (semana que cubre la fecha de hoy). Si existe, se muestra completo
+  // (incluye Alta Vel + Alta Fondo + obs. Intermedia ya en el mismo texto)
+  // y no se sigue con el sistema viejo.
+  if(diaActual !== 'domingo') {
+    var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
+    var diaLabelMayus = {lunes:'LUNES',martes:'MARTES',miercoles:'MIERCOLES',jueves:'JUEVES',viernes:'VIERNES',sabado:'SABADO'}[diaActual];
+    var semanaGen = planesGenerados.find(function(p){
+      var ini = new Date(p.inicio+'T00:00:00'), fin = new Date(p.fin+'T00:00:00');
+      return hoyTs >= ini && hoyTs <= fin;
+    });
+    if(semanaGen) {
+      var bloqueDia = genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus)
+        || genExtraerDiaDeTexto(semanaGen.texto, diaLabelMayus.replace('MIERCOLES','MIÉRCOLES').replace('SABADO','SÁBADO'));
+      if(bloqueDia) {
+        el.innerHTML = '<div class="card">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem">'
+          + '<div style="font-size:.65rem;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase">Generado por IA — Semana '+(semanaGen.semanaIdx+1)+' de '+semanaGen.totalSemanas+' · '+escapeHtml(semanaGen.fase)+'</div>'
+          + '<div style="font-size:.65rem;color:var(--t3)">'+(diasLabel[diaActual]||diaActual)+'</div>'
+          + '</div>'
+          + '<div class="plan-dia-text" style="white-space:pre-wrap">'+escapeHtml(bloqueDia)+'</div>'
+          + '</div>';
+        return;
+      }
+    }
+  }
 
   var esAR = (grupo==='arv'||grupo==='arf');
   var discsAMostrar = esAR ? [ (grupo==='arv'?'velocidad':'fondo') ] : ['velocidad','fondo'];
@@ -3601,6 +3897,10 @@ async function _ejecutarSyncToSheets() {
       'PLANES_IA','','','','','','','','','','','','','','','','','',
       JSON.stringify(planesIA),''
     ]);
+    rows.push([
+      'PLANES_GENERADOS','','','','','','','','','','','','','','','','','',
+      JSON.stringify(planesGenerados),''
+    ]);
 
     console.log('[SYNC] Sending '+rows.length+' rows to Sheets...');
     var postResp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec', {
@@ -3672,6 +3972,7 @@ async function syncFromSheets() {
 
     var planesRow = null;
     var planesIARow = null;
+    var planesGeneradosRow = null;
     rows.forEach(function(row) {
       if(row[0] === 'ATHLETE') {
         var id = parseInt(row[1]);
@@ -3719,6 +4020,7 @@ async function syncFromSheets() {
       }
       if(row[0] === 'PLANES') planesRow = row;
       if(row[0] === 'PLANES_IA') planesIARow = row;
+      if(row[0] === 'PLANES_GENERADOS') planesGeneradosRow = row;
     });
 
     if(planesRow) {
@@ -3731,6 +4033,12 @@ async function syncFromSheets() {
       try {
         var pIA = JSON.parse(planesIARow[18]||'[]');
         if(Array.isArray(pIA)) planesIA = pIA;
+      } catch(e){}
+    }
+    if(planesGeneradosRow) {
+      try {
+        var pGen = JSON.parse(planesGeneradosRow[18]||'[]');
+        if(Array.isArray(pGen)) planesGenerados = pGen;
       } catch(e){}
     }
 
@@ -3750,6 +4058,7 @@ function _saveDataCore() {
       weekly:weekly, rmData:rmData, COMPS:COMPS,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
       antropometria:ANTROPOMETRIA, planesIA:planesIA,
+      planesGenerados:planesGenerados,
     }));
   } catch(e) { console.warn('save failed',e); }
 }
@@ -4766,9 +5075,9 @@ function _fechaHoyDDMMAAAA() {
   return (hoy.getDate()<10?'0':'') + hoy.getDate() + '/' + (hoy.getMonth()<9?'0':'') + (hoy.getMonth()+1) + '/' + hoy.getFullYear();
 }
 
-// Guarda la respuesta en la ficha del deportista (seguimiento personal)
-// Y ADEMÁS la centraliza en "Planes de Entrenamientos → IA" para tener
-// un solo lugar donde ver todo lo que generó el asistente.
+// Guarda la respuesta en la ficha del deportista (seguimiento personal).
+// "Planes de Entrenamientos → IA" ahora es solo para los planes
+// generados por semana, así que ya no se duplica acá.
 function iaGuardarEnFicha(depId, texto, btn) {
   if(!depId) return;
   var f = _fechaHoyDDMMAAAA();
@@ -4777,38 +5086,30 @@ function iaGuardarEnFicha(depId, texto, btn) {
   if(!Array.isArray(athletesExtra[depId].historial)) athletesExtra[depId].historial = [];
   athletesExtra[depId].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA\n' + texto });
 
-  var a = ATHLETES.find(function(x){ return x.id === depId; });
-  planesIA.push({
-    id: Date.now(), ts: Date.now(), tipo: 'individual',
-    depId: depId, depNombre: a ? (a.ap+' '+a.nm) : 'Deportista',
-    texto: texto, fecha: f
-  });
-
   saveData();
   btn.textContent = '✓ Guardado en ficha';
   btn.disabled = true;
-  toast('Guardado en la ficha del deportista y en Planes de Entrenamientos ✓');
+  toast('Guardado en la ficha del deportista ✓');
 }
 
-// Guarda la respuesta SOLO en el listado centralizado de "Planes de
-// Entrenamientos → IA" — ya no la duplica en la ficha de cada deportista
-// del grupo (así no queda repartida en N fichas).
+// Guarda la respuesta en la ficha de CADA deportista del grupo
+// (ya no se centraliza en "Planes de Entrenamientos → IA").
 function iaGuardarEnFichaGrupo(grupo, texto, btn) {
   if(!grupo) return;
   var miembros = ATHLETES.filter(function(a){ return a.grupo === grupo; });
   if(!miembros.length) return;
   var f = _fechaHoyDDMMAAAA();
 
-  planesIA.push({
-    id: Date.now(), ts: Date.now(), tipo: 'grupo',
-    grupoKey: grupo, grupoLabel: grupoLabel(grupo) + ' (' + nivelDisplay(grupo) + ')',
-    texto: texto, fecha: f
+  miembros.forEach(function(a){
+    if(!athletesExtra[a.id]) athletesExtra[a.id] = {apodNm:'',apodTel:'',apodEmail:'',ingreso:'',historial:[]};
+    if(!Array.isArray(athletesExtra[a.id].historial)) athletesExtra[a.id].historial = [];
+    athletesExtra[a.id].historial.push({ fecha: f, tipo: 'obs', nota: '🧠 ASISTENTE IA (grupo)\n' + texto });
   });
 
   saveData();
-  btn.textContent = '✓ Guardado en Planes de Entrenamientos';
+  btn.textContent = '✓ Guardado en la ficha de ' + miembros.length + ' deportistas';
   btn.disabled = true;
-  toast('Plan guardado en Planes de Entrenamientos → IA (' + miembros.length + ' deportistas) ✓');
+  toast('Guardado en la ficha de ' + miembros.length + ' deportistas ✓');
 }
 
 function iaAppendLoader() {
