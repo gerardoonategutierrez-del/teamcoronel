@@ -876,7 +876,7 @@ body {
   <div class="tabs">
     <button class="tab on" onclick="switchPlanesTab('ver',this)">📅 Plan de Hoy</button>
     <button class="tab"    onclick="switchPlanesTab('cargar',this)">🎯 Generar Plan</button>
-    <button class="tab"    onclick="switchPlanesTab('guardados',this)">📋 Guardados</button>
+    <button class="tab"    onclick="switchPlanesTab('guardados',this)">🏆 Competencias</button>
     <button class="tab"    onclick="switchPlanesTab('ia',this)">🧠 IA</button>
   </div>
 
@@ -909,8 +909,43 @@ body {
     </div>
   </div>
 
-  <!-- PLANES GUARDADOS -->
+  <!-- COMPETENCIAS (fuente de fechas para el generador de IA y el Dashboard) -->
   <div id="planes-tab-guardados" style="display:none">
+    <div class="card" style="margin-bottom:.75rem">
+      <div class="stat-label" style="margin-bottom:.5rem">Agregar competencia</div>
+      <div class="fi-row">
+        <div class="fg">
+          <label class="fl">Nombre</label>
+          <input class="fi" id="comp-nombre" placeholder="Ej: SLS, Alta Federación">
+        </div>
+        <div class="fg">
+          <label class="fl">Nivel</label>
+          <select class="fi" id="comp-nivel">
+            <option value="SLS">SLS</option>
+            <option value="Alta Federacion">Alta Federación</option>
+            <option value="Intermedia Federacion">Intermedia Federación</option>
+            <option value="Selectivo Federacion">Selectivo Federación</option>
+          </select>
+        </div>
+      </div>
+      <div class="fi-row">
+        <div class="fg">
+          <label class="fl">Fecha (o inicio, si dura varios días)</label>
+          <input class="fi" type="date" id="comp-fecha1">
+        </div>
+        <div class="fg">
+          <label class="fl">Fecha fin (opcional)</label>
+          <input class="fi" type="date" id="comp-fecha2">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="agregarCompetencia()">➕ Agregar competencia</button>
+    </div>
+    <div class="stat-label" style="margin-bottom:.5rem">Calendario cargado</div>
+    <div id="competencias-lista"></div>
+  </div>
+
+  <!-- PLANES GUARDADOS (legado — sistema antiguo, ya no se alimenta) -->
+  <div id="planes-tab-guardados-legado" style="display:none">
     <div id="planes-guardados-lista"><div class="empty"><div class="empty-icon">📋</div>No hay planes guardados</div></div>
   </div>
 
@@ -1254,9 +1289,10 @@ var COMPS=[
   {name:"SLS",dates:["2026-08-22"],level:"SLS",priority:"B"},
   {name:"Intermedia Federacion",dates:["2026-09-05","2026-09-06"],level:"Intermedia Federacion",priority:"B"},
   {name:"SLS",dates:["2026-10-03"],level:"SLS",priority:"B"},
+  {name:"Intermedia Federacion",dates:["2026-10-10"],level:"Intermedia Federacion",priority:"B"},
   {name:"Alta Federacion",dates:["2026-10-24","2026-10-25"],level:"Alta Federacion",priority:"A"},
   {name:"Intermedia Federacion",dates:["2026-10-31"],level:"Intermedia Federacion",priority:"B"},
-  {name:"SLS",dates:["2026-11-03"],level:"SLS",priority:"B"},
+  {name:"SLS",dates:["2026-11-07"],level:"SLS",priority:"B"},
   {name:"Intermedia Federacion",dates:["2026-12-05","2026-12-06"],level:"Intermedia Federacion",priority:"B"},
   {name:"Alta Federacion",dates:["2026-12-12","2026-12-13"],level:"Alta Federacion",priority:"A"}
 ];
@@ -2799,6 +2835,70 @@ function genRitmosSemana(offsetSeg) {
 // cae en o después de ese sábado) y su fase/offset de ritmo, agrupando
 // por bloques consecutivos que apuntan a la misma competencia (últimas
 // 3 semanas de cada bloque: Pico → Descenso → Taper; antes: Acumulación).
+// ══════════════════════════════════════════════════════════════
+// COMPETENCIAS — pantalla para cargar/editar el calendario (COMPS).
+// Esta es la ÚNICA fuente de fechas: el generador de planes por IA
+// (genCalendarioSemanas) y el widget "Próximas Competencias" del
+// Dashboard leen directo de este mismo array COMPS.
+// ══════════════════════════════════════════════════════════════
+
+function renderCompetencias() {
+  var el = document.getElementById('competencias-lista');
+  if(!el) return;
+  if(!COMPS.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div>Todavía no hay competencias cargadas</div>';
+    return;
+  }
+  var ordenadas = COMPS.map(function(c, i){ return {c:c, i:i}; })
+    .sort(function(a,b){ return new Date(a.c.dates[0]) - new Date(b.c.dates[0]); });
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  el.innerHTML = ordenadas.map(function(item){
+    var c = item.c, i = item.i;
+    var d1 = new Date(c.dates[0]+'T00:00:00');
+    var fLabel = d1.getDate()+'/'+(d1.getMonth()+1)+'/'+d1.getFullYear();
+    if(c.dates[1]) {
+      var d2 = new Date(c.dates[1]+'T00:00:00');
+      fLabel += ' al '+d2.getDate()+'/'+(d2.getMonth()+1)+'/'+d2.getFullYear();
+    }
+    var pasada = d1 < hoy;
+    return '<div class="card" style="margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center'+(pasada?';opacity:.55':'')+'">'
+      + '<div><div style="font-weight:600;font-size:.85rem">'+escapeHtml(c.name)+'</div>'
+      + '<div style="font-size:.65rem;color:var(--t3);margin-top:.15rem">'+escapeHtml(c.level||'')+' · '+fLabel+(pasada?' · ya pasó':'')+'</div></div>'
+      + '<button class="btn btn-danger btn-sm" onclick="eliminarCompetencia('+i+')">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function agregarCompetencia() {
+  var nombre = (document.getElementById('comp-nombre')||{}).value.trim();
+  var nivel  = (document.getElementById('comp-nivel')||{}).value;
+  var f1     = (document.getElementById('comp-fecha1')||{}).value;
+  var f2     = (document.getElementById('comp-fecha2')||{}).value;
+  if(!nombre) { toast('Ingresa el nombre de la competencia','err'); return; }
+  if(!f1) { toast('Ingresa al menos la fecha de inicio','err'); return; }
+
+  var dates = f2 ? [f1, f2] : [f1];
+  COMPS.push({ name: nombre, dates: dates, level: nivel, priority: (nivel==='SLS'||nivel==='Intermedia Federacion') ? 'B' : 'A' });
+
+  saveData();
+  renderCompetencias();
+  document.getElementById('comp-nombre').value = '';
+  document.getElementById('comp-fecha1').value = '';
+  document.getElementById('comp-fecha2').value = '';
+  toast('Competencia agregada ✓');
+}
+
+function eliminarCompetencia(idx) {
+  var c = COMPS[idx];
+  if(!c) return;
+  if(!confirm('¿Eliminar "'+c.name+'"? Si el generador de planes ya usó esta fecha para calcular fases de semanas pendientes, se recalculará con el calendario actualizado la próxima vez que generes.')) return;
+  COMPS.splice(idx, 1);
+  saveData();
+  renderCompetencias();
+  toast('Competencia eliminada');
+}
+
 function genCalendarioSemanas() {
   var hoy = new Date(); hoy.setHours(0,0,0,0);
   var lunes = new Date(hoy);
@@ -3064,7 +3164,7 @@ function switchPlanesTab(tab, btn) {
   });
   document.querySelectorAll('#sec-planes .tab').forEach(function(b){ b.classList.remove('on'); });
   if(btn) btn.classList.add('on');
-  if(tab==='guardados') buildPlanesGuardados();
+  if(tab==='guardados') renderCompetencias();
   if(tab==='ver') planHoyInit();
   if(tab==='ia') buildPlanesIA();
   if(tab==='cargar') genRenderEstado();
@@ -3996,6 +4096,10 @@ async function _ejecutarSyncToSheets() {
       'PLANES_GENERADOS','','','','','','','','','','','','','','','','','',
       JSON.stringify(planesGenerados),''
     ]);
+    rows.push([
+      'COMPS','','','','','','','','','','','','','','','','','',
+      JSON.stringify(COMPS),''
+    ]);
 
     console.log('[SYNC] Sending '+rows.length+' rows to Sheets...');
     var postResp = await fetch('https://script.google.com/macros/s/AKfycbzDGnzGpuFX21WgxB-JE8Erk1_J_tO4cWwZ6xNcS_lrn_YoNUmia8DXZ1eIU9k8uVEDXA/exec', {
@@ -4068,6 +4172,7 @@ async function syncFromSheets() {
     var planesRow = null;
     var planesIARow = null;
     var planesGeneradosRow = null;
+    var compsRow = null;
     rows.forEach(function(row) {
       if(row[0] === 'ATHLETE') {
         var id = parseInt(row[1]);
@@ -4116,8 +4221,15 @@ async function syncFromSheets() {
       if(row[0] === 'PLANES') planesRow = row;
       if(row[0] === 'PLANES_IA') planesIARow = row;
       if(row[0] === 'PLANES_GENERADOS') planesGeneradosRow = row;
+      if(row[0] === 'COMPS') compsRow = row;
     });
 
+    if(compsRow) {
+      try {
+        var comps2 = JSON.parse(compsRow[18]||'[]');
+        if(Array.isArray(comps2) && comps2.length) COMPS = comps2;
+      } catch(e){}
+    }
     if(planesRow) {
       try {
         var planes = JSON.parse(planesRow[18]||'{}');
