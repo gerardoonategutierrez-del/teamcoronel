@@ -1407,7 +1407,7 @@ function show(id, btn) {
 function _saveDataCore() {
   try {
     localStorage.setItem('teamcoronel_2026', JSON.stringify({
-      weekly:weekly, rmData:rmData, COMPS:COMPS,
+      weekly:weekly, rmData:rmData, COMPS:COMPS, ATHLETES:ATHLETES,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
       antropometria:ANTROPOMETRIA, planesIA:planesIA,
       planesGenerados:planesGenerados,
@@ -1429,6 +1429,18 @@ function loadData() {
     if(d.weekly) weekly=d.weekly;
     if(d.rmData) rmData=d.rmData;
     if(d.COMPS) COMPS=d.COMPS;
+    if(d.ATHLETES && Array.isArray(d.ATHLETES)) {
+      // No reemplaza ATHLETES entero (perdería a cualquiera que solo
+      // viniera del array base) — combina: actualiza los que ya existen
+      // y agrega los que solo están guardados localmente (ej. un
+      // deportista nuevo que se guardó en este dispositivo pero todavía
+      // no se confirmó en Google Sheets).
+      d.ATHLETES.forEach(function(saved){
+        var existente = ATHLETES.find(function(a){ return a.id === saved.id; });
+        if(existente) Object.assign(existente, saved);
+        else ATHLETES.push(saved);
+      });
+    }
     if(d.planesDisciplina) Object.assign(planesDisciplina, d.planesDisciplina);
     if(d.planesGenerados) planesGenerados = d.planesGenerados;
     if(d.antropometria) {
@@ -4138,7 +4150,7 @@ async function syncFromSheets() {
 function _saveDataCore() {
   try {
     localStorage.setItem('teamcoronel_2026', JSON.stringify({
-      weekly:weekly, rmData:rmData, COMPS:COMPS,
+      weekly:weekly, rmData:rmData, COMPS:COMPS, ATHLETES:ATHLETES,
       planesDisciplina:planesDisciplina, athletesExtra:athletesExtra,
       antropometria:ANTROPOMETRIA, planesIA:planesIA,
       planesGenerados:planesGenerados,
