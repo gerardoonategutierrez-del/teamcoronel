@@ -4683,36 +4683,6 @@ async function descargarFicha(id) {
       y += 12;
     }
 
-    // ── Observaciones recientes ──
-    var sObs = hist.filter(function(h){ return h.tipo !== 'control'; }).slice(0,3).map(function(h){
-      var nota = (h.nota||'');
-      var nl = nota.indexOf('\n');
-      var n  = nl>-1 ? nota.substring(nl+1) : nota;
-      n = n.split('\n\n')[0].trim().split('\n').slice(0,4).join(' ');
-      return n.trim() ? { fecha:h.fecha, texto:n } : null;
-    }).filter(Boolean);
-
-    if (sObs.length) {
-      y = _asegurarEspacio(doc, y, 40, pageH, marginTop);
-      doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(29,78,216);
-      doc.text('OBSERVACIONES RECIENTES', marginX, y);
-      y += 6;
-      doc.setDrawColor(219,234,254); doc.setLineWidth(0.7);
-      doc.line(marginX, y, pageW-marginX, y);
-      y += 16;
-
-      sObs.forEach(function(o){
-        y = _asegurarEspacio(doc, y, 34, pageH, marginTop);
-        doc.setDrawColor(59,130,246); doc.setLineWidth(2.2);
-        doc.line(marginX, y-9, marginX, y+18);
-        doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(107,114,128);
-        doc.text(o.fecha, marginX+10, y-2);
-        y += 9;
-        y = _pintarParrafo(doc, o.texto, marginX+10, y, contentW-14, 12, 9.5);
-        y += 8;
-      });
-    }
-
     var nombreArchivo = 'Ficha_'+a.ap.replace(/\s+/g,'_')+'_'+a.nm.replace(/\s+/g,'_')+'.pdf';
     doc.save(nombreArchivo);
     toast('\u2713 Ficha descargada');
