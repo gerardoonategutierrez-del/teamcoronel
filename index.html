@@ -284,6 +284,7 @@ footer{background:#060d1e;border-top:1px solid rgba(37,99,235,.12);padding:2.5re
         <div class="form-field"><label class="form-label">TELÉFONO</label><input class="form-input" id="f-tel" type="tel" placeholder="+56 9 XXXX XXXX"></div>
         <div class="form-field"><label class="form-label">CORREO</label><input class="form-input" id="f-email" type="email" placeholder="tu@correo.cl"></div>
       </div>
+      <div class="form-field"><label class="form-label">CLUB AL QUE PERTENECES</label><input class="form-input" id="f-club" type="text" placeholder="Ej: Club Patín Carrera Concepción (si no tienes club, escribe: Sin club)"></div>
       <div class="form-field"><label class="form-label">NIVEL DE INTERÉS</label>
         <select class="form-select" id="f-nivel">
           <option value="">-- Selecciona --</option>
@@ -828,8 +829,9 @@ async function enviarPostulacion(){
   var c=document.getElementById("f-cat").value;
   var t=document.getElementById("f-tel").value.trim();
   var em=document.getElementById("f-email").value.trim();
+  var club=document.getElementById("f-club").value.trim();
   var msg=document.getElementById("f-msg").value.trim();
-  if(!n||!e||!niv||!c||!msg){alert("Completa nombre, edad, nivel, categoría y mensaje.");return;}
+  if(!n||!e||!club||!niv||!c||!msg){alert("Completa nombre, edad, club, nivel, categoría y mensaje.");return;}
 
   var btn=document.querySelector(".btn-submit");
   var btnTxt=btn?btn.textContent:"";
@@ -839,7 +841,7 @@ async function enviarPostulacion(){
   // El propio backend (Apps Script) es el que envía el correo de aviso al club,
   // por lo que no se abre ni se usa el correo del postulante en el navegador.
   var fecha=new Date().toLocaleString("es-CL",{timeZone:"America/Santiago"});
-  var row=[n,e,niv,c,t,em,msg,fecha];
+  var row=[n,e,niv,c,t,em,msg,fecha,club]; // club va al final para no mover las columnas existentes
   var ok=true;
   try{
     await fetch(SH+"?action=append&sheet=landing_postulaciones&row="+encodeURIComponent(JSON.stringify(row)));
@@ -857,6 +859,7 @@ async function enviarPostulacion(){
     document.getElementById("f-cat").value="";
     document.getElementById("f-tel").value="";
     document.getElementById("f-email").value="";
+    document.getElementById("f-club").value="";
     document.getElementById("f-msg").value="";
   }else{
     alert("No pudimos enviar tu postulación. Por favor intenta nuevamente en unos minutos.");
